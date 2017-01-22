@@ -58,6 +58,7 @@ model.eval()
 softMax = nn.Softmax() # to get probabilities out of CNN
 
 while True:
+    startt = time.time()
     ret, frame = cam.read()
     if not ret:
         break
@@ -67,11 +68,10 @@ while True:
     else:
         frame = frame[int((yres - xres)/2):int((yres+xres)/2),:,:]
     
-    cv2.imshow('win', frame)
-    frame = cv2.resize(frame, dsize=(args.size, args.size))
+    pframe = cv2.resize(frame, dsize=(args.size, args.size))
     
     # prepare and normalize frame for processing:
-    pframe = np.swapaxes(frame,0,2)
+    pframe = np.swapaxes(pframe, 0, 2)
     pframe = np.expand_dims(pframe, axis=0)
     pframe = transforms.ToTensor()(pframe)
     torch.add(pframe, -pframe.mean())
@@ -94,9 +94,13 @@ while True:
     for i in range(min(5, last+1)):
         text += categories[order[last-i]] + ' (' + '{0:.2f}'.format(output[order[last-i]]*100) + '%) '
     # cv2.displayOverlay('win', text, 1000)
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(frame, text, (10, xres-10), font, 1, (255, 255, 255), 2)
-    print text
+    # font = cv2.FONT_HERSHEY_SIMPLEX
+    # cv2.putText(frame, text, (10, 10), font, 1, (255, 255, 255), 2)
+    cv2.imshow('win', frame)
+
+    endt = time.time()
+    sys.stdout.write("\r"+text+"fps: "+str(1/(endt-startt)))
+    sys.stdout.flush()
     
     if cv2.waitKey(1) == 27: # ESC to stop
         break
