@@ -44,7 +44,6 @@ xres = 640
 yres = 480
 args = define_and_parse_args()
 categories = cat_file() # load category file
-# categories.sort() # sorted by alphabetic name, as per training: https://github.com/pytorch/vision/blob/master/torchvision/datasets/folder.py#L17
 
 # setup camera input:
 cam = cv2.VideoCapture(args.input)
