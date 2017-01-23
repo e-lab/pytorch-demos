@@ -99,13 +99,16 @@ while True:
     text = ''
     for i in range(min(5, last+1)):
         text += categories[order[last-i]] + ' (' + '{0:.2f}'.format(output[order[last-i]]*100) + '%) '
-    # cv2.displayOverlay('win', text, 1000)
-    # font = cv2.FONT_HERSHEY_SIMPLEX
-    # cv2.putText(frame, text, (10, 10), font, 1, (255, 255, 255), 2)
+
+    # overlay on GUI frame
+    # cv2.displayOverlay('win', text, 1000) # if Qt is present!
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(frame, text, (10, yres-20), font, 0.5, (255, 255, 255), 1)
     cv2.imshow('win', frame)
 
     endt = time.time()
-    sys.stdout.write("\r"+text+"fps: "+str(1/(endt-startt)))
+    # sys.stdout.write("\r"+text+"fps: "+'{0:.2f}'.format(1/(endt-startt))) # text output 
+    sys.stdout.write("\rfps: "+'{0:.2f}'.format(1/(endt-startt)))
     sys.stdout.flush()
     
     if cv2.waitKey(1) == 27: # ESC to stop
