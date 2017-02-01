@@ -21,6 +21,7 @@ def define_and_parse_args():
     # parser.add_argument('network', help='CNN model file')
     parser.add_argument('-i', '--input',  type=int, default='0', help='camera device index or file name, default 0')
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
+    parser.add_argument('-t', '--threshold', type=float, default=0.33, help='detection threshold')
     return parser.parse_args()
 
 # image pre-processing functions:
@@ -132,9 +133,8 @@ while True:
         dists[i] = distance.euclidean( output, protos[:,i] )
 
     # print(dists)
-    threshold = 1/3
     winner = np.argmin(dists)
-    if dists[winner] < np.max(dists)*threshold:
+    if dists[winner] < np.max(dists)*args.threshold:
         print("Detected proto", winner+1)
 
     # compute time and final info:
