@@ -48,9 +48,9 @@ cam.set(4, yres)
 # load CNN model:
 # model = torch.load(args.network)
 model = models.resnet18(pretrained=True)
-model.eval()
 # remove last fully-connected layer
 model = nn.Sequential(*list(model.children())[:-1])
+model.eval()
 # print(model)
 
 # remove last fc layer in ResNet definition also:
@@ -68,9 +68,11 @@ class ResNet(nn.Module):
         x = x.view(x.size(0), -1)
         return x
 
-templates = np.zeros((512,5,1,1)) # array of previous templates
+# some vars:
+protos = np.zeros((512,5,1,1)) # array of previous templates
 dists = np.zeros(5) # distance to protos
 
+# main loop:
 while True:
     startt = time.time()
     ret, frame = cam.read()
@@ -107,28 +109,33 @@ while True:
     
     keyPressed = cv2.waitKey(1)
     if keyPressed == ord('1'):
-        templates[:,0] = output
+        protos[:,0] = output
         print("Learned object 1")
     if keyPressed == ord('2'):
-        templates[:,1] = output
+        protos[:,1] = output
         print("Learned object 2")
     if keyPressed == ord('3'):
-        templates[:,2] = output
+        protos[:,2] = output
         print("Learned object 3")
     if keyPressed == ord('4'):
-        templates[:,3] = output
+        protos[:,3] = output
         print("Learned object 4")
     if keyPressed == ord('5'):
-        templates[:,4] = output
+        protos[:,4] = output
         print("Learned object 5")
 
     if keyPressed == 27: # ESC to stop
         break
 
-    for i in range (0, 5):
-        dists[i] = distance.euclidean(output,templates[:,i])
+    # compute distance between output and protos:
+    for i in range(5):
+        dists[i] = distance.euclidean( output, protos[:,i] )
 
-    print(dists)
+    # print(dists)
+    threshold = 1/3
+    winner = np.argmin(dists)
+    if dists[winner] < np.max(dists)*threshold:
+        print("Detected proto", winner+1)
 
     # compute time and final info:
     endt = time.time()
