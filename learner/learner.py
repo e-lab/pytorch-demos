@@ -100,14 +100,8 @@ while True:
         break
 
     output = output.data.numpy()[0] # get data from pytorch Variable, [0] = get vector from array
-     
-    # overlay on GUI frame
-    # cv2.displayOverlay('win', text, 1000) # if Qt is present!
-    # font = cv2.FONT_HERSHEY_SIMPLEX
-    # cv2.putText(frame, text, (10, yres-20), font, 0.5, (255, 255, 255), 1)
-    cv2.imshow('win', frame)
 
-    
+    # detect key presses:
     keyPressed = cv2.waitKey(1)
     if keyPressed == ord('1'):
         protos[:,0] = output
@@ -134,14 +128,18 @@ while True:
 
     # print(dists)
     winner = np.argmin(dists)
+    text2 = ""
     if dists[winner] < np.max(dists)*args.threshold:
-        print("Detected proto", winner+1)
+        text2 = " / Detected proto" + str(winner+1)
 
     # compute time and final info:
     endt = time.time()
-    # sys.stdout.write("\r"+text+"fps: "+'{0:.2f}'.format(1/(endt-startt))) # text output 
-    # sys.stdout.write("\rfps: "+'{0:.2f}'.format(1/(endt-startt)))
-    sys.stdout.flush()
+    text = "fps: "+'{0:.2f}'.format(1/(endt-startt)) + text2
+
+    # overlay on GUI frame
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(frame, text, (10, yres-20), font, 0.5, (255, 255, 255), 1)
+    cv2.imshow('win', frame)
 
 # end program:
 cam.release()
