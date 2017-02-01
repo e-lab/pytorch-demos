@@ -130,7 +130,7 @@ while True:
     winner = np.argmin(dists)
     text2 = ""
     if dists[winner] < np.max(dists)*args.threshold:
-        text2 = " / Detected proto" + str(winner+1)
+        text2 = " / Detected: " + str(winner+1)
 
     # compute time and final info:
     endt = time.time()
@@ -138,7 +138,7 @@ while True:
 
     # overlay on GUI frame
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(frame, text, (10, yres-20), font, 0.5, (255, 255, 255), 1)
+    cv2.putText(frame, text, (10, yres-20), font, 1, (255, 255, 255), 2)
     cv2.imshow('win', frame)
 
 # end program:
