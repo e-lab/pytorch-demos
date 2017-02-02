@@ -14,14 +14,18 @@ import torch
 import torch.nn as nn
 import torchvision.models as models 
 import torchvision.transforms as transforms
+import torchvision.datasets as datasets
 
 def define_and_parse_args():
     # argument Checking
     parser = argparse.ArgumentParser(description="Learner Demo")
     # parser.add_argument('network', help='CNN model file')
-    parser.add_argument('-i', '--input',  type=int, default='0', help='camera device index or file name, default 0')
+    parser.add_argument('-i', '--input', type=int, default='0', help='camera device index or file name, default 0')
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
     parser.add_argument('-t', '--threshold', type=float, default=0.33, help='detection threshold')
+    parser.add_argument('-v', '--variance', type=bool, default=False, help='get variance for testset') # used to compute a variance matrix of representation values from a test dataset
+    parser.add_argument('-p', '--path', type=str, default='', help='path for variance testset')
+    parser.add_argument('-u', '--usevar', type=bool, default=False, help='use variance for distance calculations')
     return parser.parse_args()
 
 # image pre-processing functions:
@@ -68,6 +72,40 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         return x
+
+def computeOutVar(path):
+    valdir = os.path.join(path, 'val')
+    val_loader = torch.utils.data.DataLoader(
+        datasets.ImageFolder(valdir, transforms.Compose([
+            transforms.Scale(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225]),
+        ])),
+        batch_size=1, shuffle=True,
+        num_workers=1, pin_memory=True)
+    print('Loaded', len(val_loader), 'test images!')
+
+    outs = np.zeros((512,len(val_loader),1,1))
+
+    for i, (input, target) in enumerate(val_loader):
+        input_var = torch.autograd.Variable(input, volatile=True)
+        output = model(input_var)
+        outs[:,i] = output.data.numpy()[0] # get data from pytorch Variable, [0] = get vector from array
+
+    outvar = np.var(outs,1)
+
+    np.save('outvar.npy', outvar)
+    print('Variance computed and saved to "outvar.npy" file')
+    return outvar
+
+# run program:    
+if args.variance:
+    outvar = computeOutVar(args.path)
+else: 
+    if args.usevar: 
+        outvar = np.load('outvar.npy')
 
 # some vars:
 protos = np.zeros((512,5,1,1)) # array of previous templates
@@ -123,13 +161,18 @@ while True:
         break
 
     # compute distance between output and protos:
-    for i in range(5):
-        dists[i] = distance.euclidean( output, protos[:,i] )
+    if args.usevar:
+        for i in range(5):
+            dists[i] = distance.seuclidean( output, protos[:,i], outvar )
+            print(dists)
+    else:
+        for i in range(5):
+            dists[i] = distance.euclidean( output, protos[:,i] )
 
     # print(dists)
     winner = np.argmin(dists)
     text2 = ""
-    if dists[winner] < np.max(dists)*args.threshold:
+    if dists[winner] < np.max(dists): #*args.threshold:
         text2 = " / Detected: " + str(winner+1)
 
     # compute time and final info:
