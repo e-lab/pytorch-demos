@@ -39,6 +39,8 @@ transformsImage = transforms.Compose([
 print("Learner demo e-Lab")
 print("keys 1-5 to learn new objects, esc to quit")
 
+np.set_printoptions(precision=2)
+
 xres = 640
 yres = 480
 args = define_and_parse_args()
@@ -108,7 +110,7 @@ else:
 
 # some vars:
 protos = np.ones((512,5,1,1)) # array of previous templates
-dists = np.ones(5) # distance to protos
+dists = np.zeros(5) # distance to protos
 
 # main loop:
 while True:
@@ -166,8 +168,8 @@ while True:
     else:
         for i in range(5):
             dists[i] = distance.cosine( output, protos[:,i] )
-
-    print(dists)
+    # print(dists)
+    
     winner = np.argmin(dists)
     text2 = ""
     if dists[winner] < np.max(dists)*args.threshold:
