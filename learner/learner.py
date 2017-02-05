@@ -15,6 +15,7 @@ import torch.nn as nn
 import torchvision.models as models 
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+from tqdm import tqdm # progress bar
 
 def define_and_parse_args():
     # argument Checking
@@ -22,7 +23,7 @@ def define_and_parse_args():
     # parser.add_argument('network', help='CNN model file')
     parser.add_argument('-i', '--input', type=int, default='0', help='camera device index or file name, default 0')
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
-    parser.add_argument('-t', '--threshold', type=float, default=0.33, help='detection threshold')
+    parser.add_argument('-t', '--threshold', type=float, default=0.5, help='detection threshold')
     parser.add_argument('-v', '--variance', type=bool, default=False, help='get variance for testset') # used to compute a variance matrix of representation values from a test dataset
     parser.add_argument('-p', '--path', type=str, default='', help='path for variance testset')
     parser.add_argument('-u', '--usevar', type=bool, default=False, help='use variance for distance calculations')
@@ -30,11 +31,9 @@ def define_and_parse_args():
 
 # image pre-processing functions:
 transformsImage = transforms.Compose([
-        # transforms.ToPILImage(),
-        # transforms.Scale(256),
-        # transforms.CenterCrop(224),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) # needed for pythorch ZOO models on ImageNet (stats)
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std =[0.229, 0.224, 0.225]) # needed for pythorch ZOO models on ImageNet (stats)
     ])
 
 print("Learner demo e-Lab")
@@ -89,7 +88,7 @@ def computeOutVar(path):
 
     outs = np.zeros((512,len(val_loader),1,1))
 
-    for i, (input, target) in enumerate(val_loader):
+    for i, (input, target) in tqdm(enumerate(val_loader)):
         input_var = torch.autograd.Variable(input, volatile=True)
         output = model(input_var)
         outs[:,i] = output.data.numpy()[0] # get data from pytorch Variable, [0] = get vector from array
@@ -108,8 +107,8 @@ else:
         outvar = np.load('outvar.npy')
 
 # some vars:
-protos = np.zeros((512,5,1,1)) # array of previous templates
-dists = np.zeros(5) # distance to protos
+protos = np.ones((512,5,1,1)) # array of previous templates
+dists = np.ones(5) # distance to protos
 
 # main loop:
 while True:
@@ -124,7 +123,7 @@ while True:
         frame = frame[int((yres - xres)/2):int((yres+xres)/2),:,:]
     
     pframe = cv2.resize(frame, dsize=(args.size, args.size))
-    
+
     # prepare and normalize frame for processing:
     pframe = np.swapaxes(pframe, 0, 2)
     pframe = np.expand_dims(pframe, axis=0)
@@ -140,7 +139,7 @@ while True:
     output = output.data.numpy()[0] # get data from pytorch Variable, [0] = get vector from array
 
     # detect key presses:
-    keyPressed = cv2.waitKey(1)
+    keyPressed = cv2.waitKey(33)
     if keyPressed == ord('1'):
         protos[:,0] = output
         print("Learned object 1")
@@ -163,16 +162,15 @@ while True:
     # compute distance between output and protos:
     if args.usevar:
         for i in range(5):
-            dists[i] = distance.seuclidean( output, protos[:,i], outvar )
-            print(dists)
+            dists[i] = distance.seuclidean( output, protos[:,i], outvar ) # uses a testset variance for better distance computations
     else:
         for i in range(5):
-            dists[i] = distance.euclidean( output, protos[:,i] )
+            dists[i] = distance.cosine( output, protos[:,i] )
 
-    # print(dists)
+    print(dists)
     winner = np.argmin(dists)
     text2 = ""
-    if dists[winner] < np.max(dists): #*args.threshold:
+    if dists[winner] < np.max(dists)*args.threshold:
         text2 = " / Detected: " + str(winner+1)
 
     # compute time and final info:
