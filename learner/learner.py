@@ -6,7 +6,8 @@
 import sys
 import os
 import time
-import cv2 # http://seeb0h.github.io/howto/howto-install-homebrew-python-opencv-osx-el-capitan/
+import cv2 # install cv3, python3:  http://seeb0h.github.io/howto/howto-install-homebrew-python-opencv-osx-el-capitan/
+# add to profile: export PYTHONPATH=$PYTHONPATH:/usr/local/Cellar/opencv3/3.2.0/lib/python3.6/site-packages/
 import numpy as np
 from scipy.spatial import distance
 import argparse
