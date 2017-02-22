@@ -9,38 +9,46 @@ import numpy as np
 import argparse
 import torch
 import torchvision.transforms as transforms
+import torch.legacy.nn as nn
+#load_lua does not recognize SpatialConvolutionMM
+nn.SpatialConvolutionMM = nn.SpatialConvolution
 from torch.utils.serialization import load_lua
-from torch.legacy import nn # import torch.nn as nn
-
 
 def define_and_parse_args():
     # argument Checking
     parser = argparse.ArgumentParser(description="Visor Demo")
-    # parser.add_argument('network', help='CNN model file')
-    parser.add_argument('categories', help='text file with categories')
-    parser.add_argument('-i', '--input',  type=int, default='0', help='camera device index or file name, default 0')
+    parser.add_argument('model', help='model directory')
+    parser.add_argument('-i', '--input',  default='0', help='camera device index or file name, default 0')
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
-    # parser.add_argument('-S', '--stat', help='stat.txt file')
     return parser.parse_args()
 
 
 def cat_file():
     # load classes file
     categories = []
-    if hasattr(args, 'categories') and args.categories:
-        try:
-            f = open(args.categories, 'r')
-            for line in f:
-                cat = line.split(',')[0].split('\n')[0]
-                if cat != 'classes':
-                    categories.append(cat)
-            f.close()
-            print('Number of categories:', len(categories))
-        except:
-            print('Error opening file ' + args.categories)
-            quit()
+    try:
+        f = open(args.model + '/categories.txt', 'r')
+        for line in f:
+            cat = line.split(',')[0].split('\n')[0]
+            if cat != 'classes':
+                categories.append(cat)
+        f.close()
+        print('Number of categories:', len(categories))
+    except:
+        print('Error opening file ' + args.model + '/categories.txt')
+        quit()
     return categories
 
+def patch(m):
+    s = str(type(m))
+    s = s[str.rfind(s, '.')+1:-2]
+    if s == 'Padding' and hasattr(m, 'nInputDim') and m.nInputDim == 3:
+        m.dim = m.dim + 1
+    if s == 'View' and len(m.size) == 1:
+        m.size = torch.Size([1,m.size[0]])
+    if hasattr(m, 'modules'):
+        for m in m.modules:
+            patch(m)
 
 print("Visor demo e-Lab - older Torch7 networks")
 xres = 640
@@ -51,35 +59,25 @@ print(categories)
 
 
 # setup camera input:
-cam = cv2.VideoCapture(args.input)
-cam.set(3, xres)
-cam.set(4, yres)
+if args.input[0] >= '0' and args.input[0] <= '9':
+    cam = cv2.VideoCapture(int(args.input))
+    cam.set(3, xres)
+    cam.set(4, yres)
+    usecam = True
+else:
+    image = cv2.imread(args.input)
+    xres = image.shape[1]
+    yres = image.shape[0]
+    usecam = False
 
 # load old-pre-trained Torch7 CNN model:
 
 # https://www.dropbox.com/sh/l0rurgbx4k6j2a3/AAA223WOrRRjpe9bzO8ecpEpa?dl=0
-model = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-alexowt-46/model.net')
-stat = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-alexowt-46/stat.t7')
-model.modules[13] = nn.View(1,9216)
+model = load_lua(args.model + '/model.net')
+stat = load_lua(args.model + '/stat.t7')
 
-# https://www.dropbox.com/sh/xcm8xul3udwo72o/AAC8RChVSOmgN61nQ0cyfdava?dl=0
-# model = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-alextiny-46/model.net')
-# stat = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-alextiny-46/stat.t7')
-# model.modules[13] = nn.View(1,64)
-
-# https://www.dropbox.com/sh/anklohs9g49z1o4/AAChA9rl0FEGixT75eT38Dqra?dl=0
-# model = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-enet-demo-46/model.net')
-# stat = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-enet-demo-46/stat.t7')
-# model.modules[41] = nn.View(1,1024)
-
-# https://www.dropbox.com/sh/s0hwugnmhwkk9ow/AAD_abZ2LOav9GeMETt5VGvGa?dl=0
-# model = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/enet128-demo-46/model.net')
-# stat = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/enet128-demo-46/stat.t7')
-# model.modules[32] = nn.View(1,512)
-
-# print(model)
-# this now should work:
-# model.forward(torch.Tensor(1,3,224,224)) # test
+#Patch Torch model to 4D
+patch(model)
 
 # image pre-processing functions:
 transformsImage = transforms.Compose([
@@ -92,9 +90,12 @@ transformsImage = transforms.Compose([
 
 while True:
     startt = time.time()
-    ret, frame = cam.read()
-    if not ret:
-        break
+    if usecam:
+        ret, frame = cam.read()
+        if not ret:
+            break
+    else:
+        frame = image.copy()
 
     if xres > yres:
         frame = frame[:,int((xres - yres)/2):int((xres+yres)/2),:]
@@ -104,9 +105,10 @@ while True:
     pframe = cv2.resize(frame, dsize=(args.size, args.size))
     
     # prepare and normalize frame for processing:
-    pframe = np.swapaxes(pframe, 0, 2)
-    pframe = np.expand_dims(pframe, axis=0)
+    pframe = pframe[...,[2,1,0]]
+    pframe = np.transpose(pframe, (2,0,1))
     pframe = transformsImage(pframe)
+    pframe = pframe.view(1, pframe.size(0), pframe.size(1), pframe.size(2))
     
     # process via CNN model:
     output = model.forward(pframe)
@@ -139,5 +141,6 @@ while True:
         break
 
 # end program:
-cam.release()
+if usecam:
+    cam.release()
 cv2.destroyAllWindows()
