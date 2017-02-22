@@ -8,9 +8,10 @@ import cv2 # install cv3, python3:  http://seeb0h.github.io/howto/howto-install-
 import numpy as np
 import argparse
 import torch
-import torch.nn as nn
-import torchvision.models as models 
 import torchvision.transforms as transforms
+from torch.utils.serialization import load_lua
+from torch.legacy import nn # import torch.nn as nn
+
 
 def define_and_parse_args():
     # argument Checking
@@ -21,6 +22,7 @@ def define_and_parse_args():
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
     # parser.add_argument('-S', '--stat', help='stat.txt file')
     return parser.parse_args()
+
 
 def cat_file():
     # load classes file
@@ -40,23 +42,44 @@ def cat_file():
     return categories
 
 
-print("Visor demo e-Lab")
+print("Visor demo e-Lab - older Torch7 networks")
 xres = 640
 yres = 480
 args = define_and_parse_args()
 categories = cat_file() # load category file
+print(categories)
+
 
 # setup camera input:
 cam = cv2.VideoCapture(args.input)
 cam.set(3, xres)
 cam.set(4, yres)
 
-# load CNN model:
-# model = torch.load(args.network)
-model = models.resnet18(pretrained=True)
-model.eval()
-# print model
-softMax = nn.Softmax() # to get probabilities out of CNN
+# load old-pre-trained Torch7 CNN model:
+
+# https://www.dropbox.com/sh/l0rurgbx4k6j2a3/AAA223WOrRRjpe9bzO8ecpEpa?dl=0
+model = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-alexowt-46/model.net')
+stat = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-alexowt-46/stat.t7')
+model.modules[13] = nn.View(1,9216)
+
+# https://www.dropbox.com/sh/xcm8xul3udwo72o/AAC8RChVSOmgN61nQ0cyfdava?dl=0
+# model = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-alextiny-46/model.net')
+# stat = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-alextiny-46/stat.t7')
+# model.modules[13] = nn.View(1,64)
+
+# https://www.dropbox.com/sh/anklohs9g49z1o4/AAChA9rl0FEGixT75eT38Dqra?dl=0
+# model = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-enet-demo-46/model.net')
+# stat = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/elab-enet-demo-46/stat.t7')
+# model.modules[41] = nn.View(1,1024)
+
+# https://www.dropbox.com/sh/s0hwugnmhwkk9ow/AAD_abZ2LOav9GeMETt5VGvGa?dl=0
+# model = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/enet128-demo-46/model.net')
+# stat = load_lua('/Users/eugenioculurciello/Dropbox/shared/models/enet128-demo-46/stat.t7')
+# model.modules[32] = nn.View(1,512)
+
+# print(model)
+# this now should work:
+# model.forward(torch.Tensor(1,3,224,224)) # test
 
 # image pre-processing functions:
 transformsImage = transforms.Compose([
@@ -64,7 +87,7 @@ transformsImage = transforms.Compose([
         # transforms.Scale(256),
         # transforms.CenterCrop(224),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) # needed for pythorch ZOO models on ImageNet (stats)
+        transforms.Normalize(stat.mean, stat.std)
     ])
 
 while True:
@@ -84,23 +107,22 @@ while True:
     pframe = np.swapaxes(pframe, 0, 2)
     pframe = np.expand_dims(pframe, axis=0)
     pframe = transformsImage(pframe)
-    pframe = torch.autograd.Variable(pframe) # turn Tensor to variable required for pytorch processing
     
     # process via CNN model:
-    output = model(pframe)
+    output = model.forward(pframe)
     if output is None:
         print('no output from CNN model file')
         break
 
-    output = softMax(output) # convert CNN output to probabilities
-    output = output.data.numpy()[0] # get data from pytorch Variable, [0] = get vector from array
-    
+    # print(output)
+    output = output.numpy()[0]
+
     # process output and print results:
     order = output.argsort()
     last = len(categories)-1
     text = ''
     for i in range(min(5, last+1)):
-        text += categories[order[last-i]] + ' (' + '{0:.2f}'.format(output[order[last-i]]*100) + '%) '
+      text += categories[order[last-i]] + ' (' + '{0:.2f}'.format(output[order[last-i]]*100) + '%) '
 
     # overlay on GUI frame
     # cv2.displayOverlay('win', text, 1000) # if Qt is present!
