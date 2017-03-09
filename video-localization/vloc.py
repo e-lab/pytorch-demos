@@ -32,6 +32,7 @@ def define_and_parse_args():
     parser.add_argument('-i', '--input', default='video.mp4', help='video file name')
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
     parser.add_argument('--embfile', default='embeddings.npy', help='embedding file name')
+    parser.add_argument('--save', default=False, help='saving similar frames to disk')
     return parser.parse_args()
 
 
@@ -181,10 +182,14 @@ def main():
 
   # display similar frames in video:
   cv2.imshow("Query frame", frame_query)
+  if args.save:
+    cv2.imwrite('frame-query.jpg', frame_query)
   for i in range(len(frameN)):
     print('Showing', i, 'th similar frame to query image')
     cv2.imshow("Similar frames", frameN[i])
     cv2.waitKey(500)
+    if args.save:
+      cv2.imwrite('frame_sim'+str(i)+'.jpg', frameN[i])
   
 
   # cv2.destroyAllWindows()
