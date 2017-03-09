@@ -166,7 +166,7 @@ def localizeInVideo(filename, frame_query, num_neighbors, n_trees=20):
 
   # close:
   cap.release()
-  return frameNeigh
+  return frameNeigh, neighbors
 
 
 def main():
@@ -178,7 +178,7 @@ def main():
   frame_num = 200
   frame_query = getVideoFrame(args.input, frame_num)
   num_neighbors = 10
-  frameN = localizeInVideo(video_file, frame_query, num_neighbors)
+  frameN, neighbors = localizeInVideo(video_file, frame_query, num_neighbors)
 
   # display similar frames in video:
   cv2.imshow("Query frame", frame_query)
