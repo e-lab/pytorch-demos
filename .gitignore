@@ -2,3 +2,5 @@
 *.ipynb
 
 *.pyc
+
+*.npy
