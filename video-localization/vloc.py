@@ -131,15 +131,19 @@ def createVideoEmbeddings(filename):
 
 
 def summarizeVideo(filename, threshold):
-  summary_frames = 0
   print('Summarizing video, please wait...')
+  video_summary = []
   cap, frame_count, xres, yres = openVideo(filename)
+
+  # load embeddings:
+  embeddings = np.load(filename+'.emb.npy')
+  print('Loaded', embeddings.shape, 'embeddings')
 
   for i in tqdm(range(frame_count)):
     ret, frame = cap.read()
     if not ret:
        break
-    output = getFrameEmbedding(frame, xres, yres)
+    output = embeddings[i]
     if i < 1:
       prevout = output
     else:
@@ -147,13 +151,14 @@ def summarizeVideo(filename, threshold):
       # print(d)
       if d > threshold:
         prevout = output
-        summary_frames += 1
         cv2.imshow('video summarization', frame)
         cv2.waitKey(500)
+        video_summary.append(i)
 
-  print(summary_frames)
   # close:
+  np.save(filename+'.sum', video_summary)
   cap.release()
+  return video_summary
 
 
 def getVideoFrame(filename, frame_num):
@@ -206,7 +211,8 @@ def main():
     createVideoEmbeddings(video_file)
 
   if args.summarize:
-    summarizeVideo(video_file, args.vst) # summarize a video and get keyframes
+    video_summary = summarizeVideo(video_file, args.vst) # summarize a video and get keyframes
+    print('These', len(video_summary), 'frames are a summary of the video:', video_summary)
   else:
     frame_num = 200
     frame_query = getVideoFrame(args.input, frame_num)
