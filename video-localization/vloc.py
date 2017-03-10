@@ -126,7 +126,7 @@ def createVideoEmbeddings(filename):
        # break
 
   # save embeddings to file:
-  np.save(args.embfile, embeddings)
+  np.save(filename+'.emb', embeddings)
   cap.release()
 
 
@@ -172,7 +172,7 @@ def localizeInVideo(filename, frame_query, num_neighbors, n_trees=20):
   output = getFrameEmbedding(frame_query, xres, yres)
 
   # load embeddings:
-  embeddings = np.load(args.embfile)
+  embeddings = np.load(filename+'.emb.npy')
   print('Loaded', embeddings.shape, 'embeddings')
 
   # using Annoy library: https://github.com/spotify/annoy
@@ -198,13 +198,16 @@ def localizeInVideo(filename, frame_query, num_neighbors, n_trees=20):
 def main():
   # video_file = '/Users/eugenioculurciello/Code/datasets/automotive/ped360p-cut-10fps.mp4'
   video_file = args.input
+  video_dir_name = os.path.dirname(video_file)
+  video_file_name = os.path.basename(video_file)
+  video_emb_file = video_file+'.emb.npy'
+  
+  if not Path(video_emb_file).is_file(): # delete embedding file if you want it to be re-created
+    createVideoEmbeddings(video_file)
 
   if args.summarize:
     summarizeVideo(video_file, args.vst) # summarize a video and get keyframes
   else:
-    if not Path(args.embfile).is_file(): # delete embedding file if you want it to be re-created
-      createVideoEmbeddings(video_file)
-
     frame_num = 200
     frame_query = getVideoFrame(args.input, frame_num)
     num_neighbors = 10
