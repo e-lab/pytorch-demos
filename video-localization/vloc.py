@@ -94,13 +94,17 @@ def getFrameEmbedding(frame, xres, yres):
    return (output.data.numpy()[0]).reshape(512) # get data from pytorch Variable, [0] = get vector from array
 
 
-def createVideoEmbeddings(filename):
-  print('Creating video embeddings, please wait...')
+def openVideo(filename):
   cap = cv2.VideoCapture(filename)
   xres = cap.get(3)
   yres = cap.get(4)
   frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
   print('This video has', frame_count, 'frames')
+  return cap, frame_count, xres, yres
+
+def createVideoEmbeddings(filename):
+  print('Creating video embeddings, please wait...')
+  cap, frame_count, xres, yres = openVideo(filename)
 
   # save embeddings in this:
   embeddings = np.zeros( (frame_count, 512) )
@@ -123,11 +127,7 @@ def createVideoEmbeddings(filename):
   cap.release()
 
 def getVideoFrame(filename, frame_num):
-  cap = cv2.VideoCapture(filename)
-  xres = cap.get(3)
-  yres = cap.get(4)
-  frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-  print('This video has', frame_count, 'frames')
+  cap, frame_count, xres, yres = openVideo(filename)
   cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
   ret, frame = cap.read()
   # close:
@@ -136,11 +136,7 @@ def getVideoFrame(filename, frame_num):
 
 
 def localizeInVideo(filename, frame_query, num_neighbors, n_trees=20):
-  cap = cv2.VideoCapture(filename)
-  xres = cap.get(3)
-  yres = cap.get(4)
-  frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-  print('This video has', frame_count, 'frames')
+  cap, frame_count, xres, yres = openVideo(filename)
 
   # get embedding of query frame:  
   output = getFrameEmbedding(frame_query, xres, yres)
