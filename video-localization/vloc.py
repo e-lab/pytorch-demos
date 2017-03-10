@@ -16,6 +16,7 @@ import time
 import cv2 # install cv3, python3:  http://seeb0h.github.io/howto/howto-install-homebrew-python-opencv-osx-el-capitan/
 # add to profile: export PYTHONPATH=$PYTHONPATH:/usr/local/Cellar/opencv3/3.2.0/lib/python3.6/site-packages/
 import numpy as np
+from scipy.spatial import distance
 import argparse
 from tqdm import tqdm
 from pathlib import Path
@@ -33,6 +34,8 @@ def define_and_parse_args():
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
     parser.add_argument('--embfile', default='embeddings.npy', help='embedding file name')
     parser.add_argument('--save', default=False, help='saving similar frames to disk')
+    parser.add_argument('--summarize', default=False, help='summarize a video file')
+    parser.add_argument('--vst', type=float, default=0.1, help='video summarization threshold')
     return parser.parse_args()
 
 
@@ -72,7 +75,6 @@ class ResNet(nn.Module):
 
 
 def getFrameEmbedding(frame, xres, yres):
-
    if xres > yres:
       frame = frame[:,int((xres - yres)/2):int((xres+yres)/2),:]
    else:
@@ -102,6 +104,7 @@ def openVideo(filename):
   print('This video has', frame_count, 'frames')
   return cap, frame_count, xres, yres
 
+
 def createVideoEmbeddings(filename):
   print('Creating video embeddings, please wait...')
   cap, frame_count, xres, yres = openVideo(filename)
@@ -116,7 +119,7 @@ def createVideoEmbeddings(filename):
 
     embeddings[i] = getFrameEmbedding(frame, xres, yres)
     
-    cv2.imshow('frame', frame)
+    cv2.imshow('video embeddings', frame)
     # time.sleep(0.25)
 
     # if cv2.waitKey(1) == 27: # ESC to stop
@@ -125,6 +128,33 @@ def createVideoEmbeddings(filename):
   # save embeddings to file:
   np.save(args.embfile, embeddings)
   cap.release()
+
+
+def summarizeVideo(filename, threshold):
+  summary_frames = 0
+  print('Summarizing video, please wait...')
+  cap, frame_count, xres, yres = openVideo(filename)
+
+  for i in tqdm(range(frame_count)):
+    ret, frame = cap.read()
+    if not ret:
+       break
+    output = getFrameEmbedding(frame, xres, yres)
+    if i < 1:
+      prevout = output
+    else:
+      d = distance.cosine(output, prevout)
+      # print(d)
+      if d > threshold:
+        prevout = output
+        summary_frames += 1
+        cv2.imshow('video summarization', frame)
+        cv2.waitKey(500)
+
+  print(summary_frames)
+  # close:
+  cap.release()
+
 
 def getVideoFrame(filename, frame_num):
   cap, frame_count, xres, yres = openVideo(filename)
@@ -168,24 +198,28 @@ def localizeInVideo(filename, frame_query, num_neighbors, n_trees=20):
 def main():
   # video_file = '/Users/eugenioculurciello/Code/datasets/automotive/ped360p-cut-10fps.mp4'
   video_file = args.input
-  if not Path(args.embfile).is_file(): # delete embedding file if you want it to be re-created
-    createVideoEmbeddings(video_file)
 
-  frame_num = 200
-  frame_query = getVideoFrame(args.input, frame_num)
-  num_neighbors = 10
-  frameN, neighbors = localizeInVideo(video_file, frame_query, num_neighbors)
+  if args.summarize:
+    summarizeVideo(video_file, args.vst) # summarize a video and get keyframes
+  else:
+    if not Path(args.embfile).is_file(): # delete embedding file if you want it to be re-created
+      createVideoEmbeddings(video_file)
 
-  # display similar frames in video:
-  cv2.imshow("Query frame", frame_query)
-  if args.save:
-    cv2.imwrite('frame-query.jpg', frame_query)
-  for i in range(len(frameN)):
-    print('Showing', i, 'th similar frame to query image')
-    cv2.imshow("Similar frames", frameN[i])
-    cv2.waitKey(500)
+    frame_num = 200
+    frame_query = getVideoFrame(args.input, frame_num)
+    num_neighbors = 10
+    frameN, neighbors = localizeInVideo(video_file, frame_query, num_neighbors)
+
+    # display similar frames in video:
+    cv2.imshow("Query frame", frame_query)
     if args.save:
-      cv2.imwrite('frame_sim'+str(i)+'.jpg', frameN[i])
+      cv2.imwrite('frame-query.jpg', frame_query)
+    for i in range(len(frameN)):
+      print('Showing', i, 'th similar frame to query image')
+      cv2.imshow("Similar frames", frameN[i])
+      cv2.waitKey(500)
+      if args.save:
+        cv2.imwrite('frame_sim'+str(i)+'.jpg', frameN[i])
   
 
   # cv2.destroyAllWindows()
