@@ -92,7 +92,7 @@ def main():
 
    # start processing:
    j = 0 # index in caption file
-   for i in range(frame_count):
+   for i in range(frame_count-2):
       ret, frame = cap.read()
       if i < 1:
          t1,t2,textc = getCaptionData(j)
