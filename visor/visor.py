@@ -45,6 +45,7 @@ xres = 640
 yres = 480
 args = define_and_parse_args()
 categories = cat_file() # load category file
+font = cv2.FONT_HERSHEY_SIMPLEX
 
 # setup camera input:
 cam = cv2.VideoCapture(args.input)
@@ -103,8 +104,6 @@ while True:
         text += categories[order[last-i]] + ' (' + '{0:.2f}'.format(output[order[last-i]]*100) + '%) '
 
     # overlay on GUI frame
-    # cv2.displayOverlay('win', text, 1000) # if Qt is present!
-    font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(frame, text, (10, yres-20), font, 0.5, (255, 255, 255), 1)
     cv2.imshow('win', frame)
 
