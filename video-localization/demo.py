@@ -1,8 +1,9 @@
 #! /usr/local/bin/python3
 
 # Demo of: Localization of frames in a video.
+# please run vloc on video to get embedding file ready first!
 #
-# run as: python3 demo.py....
+# run as: python3 demo.py -c caption.srt -i video.mp4
 #
 # E. Culurciello, March 2017
 #
@@ -25,7 +26,9 @@ def define_and_parse_args():
     parser = argparse.ArgumentParser(description="Demo captioning for Video location")
     parser.add_argument('-i', '--input', default='video.mp4', help='video file name', required=True)
     parser.add_argument('-c', '--captionfile', default='video.srt', help='caption file name', required=True)
-    parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
+    parser.add_argument('--size', type=int, default=224, help='network input size')
+    parser.add_argument('-s', '--save', type=int, default=False, help='save video file of demo')
+    parser.add_argument('--outfilename', default='output.avi', help='network input size')
     return parser.parse_args()
 
 
@@ -66,6 +69,10 @@ def main():
    video_emb_file = video_file+'.emb.npy'
 
    cap, frame_count, xres, yres = vloc.openVideo(video_file)
+   xres = cap.get(3)
+   yres = cap.get(4)
+   fourcc = cv2.VideoWriter_fourcc(*'XVID')
+   out = cv2.VideoWriter(args.outfilename, fourcc, 20.0, (int(xres),int(yres))) # to write a movie output!
    fps = cap.get(cv2.CAP_PROP_FPS)
    print("Frames per second:", fps)
 
@@ -88,8 +95,6 @@ def main():
    for i in range(frame_count):
       ret, frame = cap.read()
       if i < 1:
-         xres = cap.get(3)
-         yres = cap.get(4)
          t1,t2,textc = getCaptionData(j)
 
       # get embedding of query frame (i):  
@@ -110,10 +115,12 @@ def main():
       cv2.putText(frame, textc, (10, int(yres-20)), font, 1, (255, 255, 255), 2)
       cv2.imshow(demo_name, frame)
       # cv2.imwrite('frame.jpg', frame)
+      out.write(frame)
       cv2.waitKey(1)
 
    # close:
    cap.release()
+   out.release()
 
    # cv2.destroyAllWindows()
 
