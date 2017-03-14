@@ -42,7 +42,7 @@ def define_and_parse_args():
 
 
 def initModel():
-
+  
   # remove last fc layer in ResNet definition also:
   class ResNet(nn.Module):
     def forward(self, x):
@@ -186,6 +186,7 @@ def localizeInVideo(model, filename, newsize, frame_query, num_neighbors, n_tree
   a = AnnoyIndex(embeddings.shape[1], metric='angular')
   for i in range(embeddings.shape[0]):
     a.add_item(i, embeddings[i])
+  
   a.build(n_trees)
   neighbors = a.get_nns_by_vector(output, num_neighbors, search_k=-1, include_distances=False)
   print('Frame list of', num_neighbors, 'neighbors:', neighbors)
