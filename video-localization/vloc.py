@@ -181,6 +181,7 @@ def localizeInVideo(model, filename, newsize, frame_query, num_neighbors, n_tree
   embeddings = np.load(filename+'.emb.npy')
   print('Loaded', embeddings.shape, 'embeddings')
 
+  # prepare embedding search library:
   # using Annoy library: https://github.com/spotify/annoy
   a = AnnoyIndex(embeddings.shape[1], metric='angular')
   for i in range(embeddings.shape[0]):
@@ -202,7 +203,8 @@ def localizeInVideo(model, filename, newsize, frame_query, num_neighbors, n_tree
 
 
 def main():
-  print("Video Localization demo e-Lab")
+  demo_name = "Video Localization demo e-Lab"
+  print(demo_name)
   np.set_printoptions(precision=2)
   args = define_and_parse_args()
 
