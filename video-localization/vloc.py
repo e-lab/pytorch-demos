@@ -30,70 +30,71 @@ from annoy import AnnoyIndex # https://github.com/spotify/annoy
 def define_and_parse_args():
     # argument Checking
     parser = argparse.ArgumentParser(description="Video location Demo")
-    parser.add_argument('-i', '--input', default='video.mp4', help='video file name')
+    parser.add_argument('-i', '--input', default='video.mp4', help='video file name', required=True)
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
     parser.add_argument('--embfile', default='embeddings.npy', help='embedding file name')
     parser.add_argument('--save', default=False, help='saving similar frames to disk')
     parser.add_argument('--summarize', default=False, help='summarize a video file')
     parser.add_argument('--vst', type=float, default=0.1, help='video summarization threshold')
+    parser.add_argument('--queryf', type=int, default=200, help='query frame number') # query frame to test localization in video
     return parser.parse_args()
 
 
-print("Video Localization demo e-Lab")
-np.set_printoptions(precision=2)
-args = define_and_parse_args()
 
-# image pre-processing functions:
-transformsImage = transforms.Compose([
+def initModel():
+
+  # remove last fc layer in ResNet definition also:
+  class ResNet(nn.Module):
+    def forward(self, x):
+      x = self.conv1(x)
+      x = self.bn1(x)
+      x = self.relu(x)
+      x = self.maxpool(x)
+      x = self.layer1(x)
+      x = self.layer2(x)
+      x = self.layer3(x)
+      x = self.layer4(x)
+      x = self.avgpool(x)
+      x = x.view(x.size(0), -1)
+      return x
+
+  # load CNN model:
+  model = models.resnet18(pretrained=True)
+  # remove last fully-connected layer
+  model = nn.Sequential(*list(model.children())[:-1])
+  model.eval()
+  # print(model)
+  return model
+
+
+def getFrameEmbedding(model, frame, xres, yres, newsize):
+
+  # image pre-processing functions:
+  transformsImage = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std =[0.229, 0.224, 0.225]) # needed for pythorch ZOO models on ImageNet (stats)
     ])
 
-# load CNN model:
-model = models.resnet18(pretrained=True)
-# remove last fully-connected layer
-model = nn.Sequential(*list(model.children())[:-1])
-model.eval()
-# print(model)
+  if xres > yres:
+    frame = frame[:,int((xres - yres)/2):int((xres+yres)/2),:]
+  else:
+    frame = frame[int((yres - xres)/2):int((yres+xres)/2),:,:]
 
+  pframe = cv2.resize(frame, dsize=(newsize, newsize))
 
-# remove last fc layer in ResNet definition also:
-class ResNet(nn.Module):
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        return x
+  # prepare and normalize frame for processing:
+  pframe = np.swapaxes(pframe, 0, 2)
+  pframe = np.expand_dims(pframe, axis=0)
+  pframe = transformsImage(pframe)
+  pframe = torch.autograd.Variable(pframe) # turn Tensor to variable required for pytorch processing
+     
+  # process via CNN model:
+  output = model(pframe)
+  if output is None:
+    print('no output from CNN model file')
 
-
-def getFrameEmbedding(frame, xres, yres):
-   if xres > yres:
-      frame = frame[:,int((xres - yres)/2):int((xres+yres)/2),:]
-   else:
-      frame = frame[int((yres - xres)/2):int((yres+xres)/2),:,:]
-
-   pframe = cv2.resize(frame, dsize=(args.size, args.size))
-
-   # prepare and normalize frame for processing:
-   pframe = np.swapaxes(pframe, 0, 2)
-   pframe = np.expand_dims(pframe, axis=0)
-   pframe = transformsImage(pframe)
-   pframe = torch.autograd.Variable(pframe) # turn Tensor to variable required for pytorch processing
-       
-   # process via CNN model:
-   output = model(pframe)
-   if output is None:
-      print('no output from CNN model file')
-
-   return (output.data.numpy()[0]).reshape(512) # get data from pytorch Variable, [0] = get vector from array
+  return (output.data.numpy()[0]).reshape(512) # get data from pytorch Variable, [0] = get vector from array
 
 
 def openVideo(filename):
@@ -105,7 +106,7 @@ def openVideo(filename):
   return cap, frame_count, xres, yres
 
 
-def createVideoEmbeddings(filename):
+def createVideoEmbeddings(model, filename, newsize):
   print('Creating video embeddings, please wait...')
   cap, frame_count, xres, yres = openVideo(filename)
 
@@ -117,7 +118,7 @@ def createVideoEmbeddings(filename):
     if not ret:
        break
 
-    embeddings[i] = getFrameEmbedding(frame, xres, yres)
+    embeddings[i] = getFrameEmbedding(model, frame, xres, yres, newsize)
     
     cv2.imshow('video embeddings', frame)
     # time.sleep(0.25)
@@ -170,11 +171,11 @@ def getVideoFrame(filename, frame_num):
   return frame
 
 
-def localizeInVideo(filename, frame_query, num_neighbors, n_trees=20):
+def localizeInVideo(model, filename, newsize, frame_query, num_neighbors, n_trees=20):
   cap, frame_count, xres, yres = openVideo(filename)
 
   # get embedding of query frame:  
-  output = getFrameEmbedding(frame_query, xres, yres)
+  output = getFrameEmbedding(model, frame_query, xres, yres, newsize)
 
   # load embeddings:
   embeddings = np.load(filename+'.emb.npy')
@@ -201,6 +202,13 @@ def localizeInVideo(filename, frame_query, num_neighbors, n_trees=20):
 
 
 def main():
+  print("Video Localization demo e-Lab")
+  np.set_printoptions(precision=2)
+  args = define_and_parse_args()
+
+  # initialize neural network model to use:
+  model = initModel() 
+
   # video_file = '/Users/eugenioculurciello/Code/datasets/automotive/ped360p-cut-10fps.mp4'
   video_file = args.input
   video_dir_name = os.path.dirname(video_file)
@@ -208,16 +216,16 @@ def main():
   video_emb_file = video_file+'.emb.npy'
   
   if not Path(video_emb_file).is_file(): # delete embedding file if you want it to be re-created
-    createVideoEmbeddings(video_file)
+    createVideoEmbeddings(model, video_file, args.size)
 
   if args.summarize:
     video_summary = summarizeVideo(video_file, args.vst) # summarize a video and get keyframes
     print('These', len(video_summary), 'frames are a summary of the video:', video_summary)
   else:
-    frame_num = 200
-    frame_query = getVideoFrame(args.input, frame_num)
+    query_frame_num = args.queryf
+    frame_query = getVideoFrame(args.input, query_frame_num)
     num_neighbors = 10
-    frameN, neighbors = localizeInVideo(video_file, frame_query, num_neighbors)
+    frameN, neighbors = localizeInVideo(model, video_file, args.size, frame_query, num_neighbors)
 
     # display similar frames in video:
     cv2.imshow("Query frame", frame_query)
