@@ -42,7 +42,7 @@ def define_and_parse_args():
 
 
 def initModel():
-  
+
   # remove last fc layer in ResNet definition also:
   class ResNet(nn.Module):
     def forward(self, x):
@@ -113,7 +113,7 @@ def createVideoEmbeddings(model, filename, newsize):
   # save embeddings in this:
   embeddings = np.zeros( (frame_count, 512) )
 
-  for i in tqdm(range(frame_count)):
+  for i in tqdm(range(frame_count-2)):
     ret, frame = cap.read()
     if not ret:
        break
@@ -140,7 +140,7 @@ def summarizeVideo(filename, threshold):
   embeddings = np.load(filename+'.emb.npy')
   print('Loaded', embeddings.shape, 'embeddings')
 
-  for i in tqdm(range(frame_count)):
+  for i in tqdm(range(frame_count-2)):
     ret, frame = cap.read()
     if not ret:
        break
