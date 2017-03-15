@@ -94,7 +94,6 @@ def main():
    a.build(n_trees)
 
    # start processing:
-   j = 0 # index in caption file
    for i in range(frame_count-2):
       ret, frame = cap.read()
 
@@ -111,12 +110,13 @@ def main():
 
       # get appropriate caption based on recognized frame position in video
       if i < 1:
-         t1,t2,textc = getCaptionData(j)
-
-      tn = neighbors[0] * 1/fps # get time in seconds of this matched frame
-      if not(tn >= t1 and tn < t2):
-         j += 1
-         t1,t2,textc = getCaptionData(j) # get next caption item
+         t1,t2,textc = getCaptionData(0)
+      
+      ave_neighbor = np.mean(neighbors)
+      tn = ave_neighbor * 1/fps # get time in seconds of this matched frame
+      for j in range(len(captions)):
+         t1,t2,tmp = getCaptionData(j) # get next caption item
+         if (tn >= t1 and tn < t2): textc = tmp
       
       # print(i, neighbors[0], j, t1, tn, t2, textc)
 
