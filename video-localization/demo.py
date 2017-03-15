@@ -27,8 +27,9 @@ def define_and_parse_args():
     parser.add_argument('-i', '--input', default='video.mp4', help='video file name', required=True)
     parser.add_argument('-c', '--captionfile', default='video.srt', help='caption file name', required=True)
     parser.add_argument('--size', type=int, default=224, help='network input size')
-    parser.add_argument('-s', '--save', type=int, default=False, help='save video file of demo')
+    parser.add_argument('-s', '--save', default=False, help='save video file of demo')
     parser.add_argument('--outfilename', default='output.avi', help='network input size')
+    parser.add_argument('--noise', default=False, help='add noise to query frames')
     return parser.parse_args()
 
 
@@ -71,10 +72,12 @@ def main():
    cap, frame_count, xres, yres = vloc.openVideo(video_file)
    xres = cap.get(3)
    yres = cap.get(4)
-   fourcc = cv2.VideoWriter_fourcc(*'XVID')
-   out = cv2.VideoWriter(args.outfilename, fourcc, 20.0, (int(xres),int(yres))) # to write a movie output!
+   if args.save: 
+      fourcc = cv2.VideoWriter_fourcc(*'XVID')
+      out = cv2.VideoWriter(args.outfilename, fourcc, 20.0, (int(xres),int(yres))) # to write a movie output!
    fps = cap.get(cv2.CAP_PROP_FPS)
    print("Frames per second:", fps)
+   noise_size = 25
 
    # load embeddings:
    embeddings = np.load(video_file+'.emb.npy')
@@ -94,9 +97,11 @@ def main():
    j = 0 # index in caption file
    for i in range(frame_count-2):
       ret, frame = cap.read()
-      if i < 1:
-         t1,t2,textc = getCaptionData(j)
 
+      # add noise to query frames:
+      if args.noise: 
+         frame += ( np.random.rand(frame.shape[0],frame.shape[1], frame.shape[2]) * noise_size ).astype('uint8')
+      
       # get embedding of query frame (i):  
       output = vloc.getFrameEmbedding(model, frame, xres, yres, args.size)
 
@@ -105,23 +110,26 @@ def main():
       # print('Frame list of', num_neighbors, 'neighbors:', neighbors)
 
       # get appropriate caption based on recognized frame position in video
+      if i < 1:
+         t1,t2,textc = getCaptionData(j)
+
       tn = neighbors[0] * 1/fps # get time in seconds of this matched frame
       if not(tn >= t1 and tn < t2):
          j += 1
          t1,t2,textc = getCaptionData(j) # get next caption item
+      
       # print(i, neighbors[0], j, t1, tn, t2, textc)
 
       # overlay on GUI frame
       cv2.putText(frame, textc, (10, int(yres-20)), font, 1, (255, 255, 255), 2)
       cv2.imshow(demo_name, frame)
-      # cv2.imwrite('frame.jpg', frame)
-      out.write(frame)
+      if args.save: out.write(frame)
       cv2.waitKey(1)
 
    # close:
+   if args.save: 
+      out.release()
    cap.release()
-   out.release()
-
    # cv2.destroyAllWindows()
 
 if __name__ == "__main__":
