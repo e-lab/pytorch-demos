@@ -2,7 +2,9 @@
 
 # RNN example "abba" detector
 # 
-# see this for a more complex example:
+# another simple example:
+# https://github.com/pytorch/examples/tree/master/time_sequence_prediction
+# a more complex example:
 # http://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
 # 
 # E. Culurciello, April 2017
@@ -27,6 +29,7 @@ print('Simple RNN model to detect a abba/0110 sequence')
 num_symbols = 2 # a,b
 data_size = 256
 seq_len = 4 # abba sequence to be detected only!
+num_layers = 3
 rdata = np.random.randint(0, num_symbols, data_size) # 0=1, 1=b, for example
 
 # turn it into 1-hot encoding:
@@ -49,7 +52,7 @@ print('labels is:', label, 'total number of example sequences:', count)
 
 
 # create model:
-model = nn.RNN(num_symbols, num_symbols, 1) # see: http://pytorch.org/docs/nn.html#rnn
+model = nn.RNN(num_symbols, num_symbols, num_layers) # see: http://pytorch.org/docs/nn.html#rnn
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.005)
 
@@ -65,15 +68,22 @@ optimizer = optim.Adam(model.parameters(), lr=0.005)
 # print('model test:', output,hn)
 
 
+def repackage_hidden(h):
+   """Wraps hidden states in new Variables, to detach them from their history."""
+   if type(h) == Variable:
+      return Variable(h.data)
+   else:
+      return tuple(repackage_hidden(v) for v in h)
+
+
 num_epochs = 4
 
 
 def train():
    model.train()
-   hidden = Variable(torch.zeros(1, 1, num_symbols))
+   hidden = Variable(torch.zeros(num_layers, 1, num_symbols))
    
    for epoch in range(num_epochs):  # loop over the dataset multiple times
-      
       running_loss = 0.0
       for i in range(0, data_size-seq_len, seq_len):
          # get inputs:
@@ -83,12 +93,16 @@ def train():
          # wrap them in Variable
          inputs, labels = Variable(inputs), Variable(labels)
 
+         # Starting each batch, we detach the hidden state from how it was previously produced.
+         # If we didn't, the model would try backpropagating all the way to start of the dataset.
+         hidden = repackage_hidden(hidden)
+
          # forward, backward, optimize
-         optimizer.zero_grad()
+         model.zero_grad()
          output, hidden = model(inputs, hidden)
          
          loss = criterion(output, labels)
-         loss.backward(retain_variables=True)
+         loss.backward()
          optimizer.step()
 
          # print info / statistics:
@@ -105,19 +119,14 @@ def train():
 
 def test():
    model.eval()
-   hidden = Variable(torch.zeros(1, 1, num_symbols))
+   hidden = Variable(torch.zeros(num_layers, 1, num_symbols))
    for i in range(0, data_size-seq_len, seq_len):
-
       inputs = torch.from_numpy( data[i:i+seq_len,:]).view(seq_len, 1, num_symbols).float()
       labels = torch.from_numpy(label[i:i+seq_len,:]).view(seq_len, 1, num_symbols).float()
-      
-      inputs = Variable(inputs)
-      
+      inputs = Variable(inputs)      
       output, hidden = model(inputs, hidden)
-      
       print('in:', data[i:i+seq_len,0], 'label:', label[i:i+seq_len,1], 'out:', output.data.numpy())
-      if label[i,1]>0:
-         print('RIGHT\n\n')
+
 
 # train model:
 print('\nTRAINING ---')
