@@ -27,22 +27,22 @@ print('Simple RNN model to detect a abba/0110 sequence')
 
 # create a fake dataset of symbols a,b:
 num_symbols = 2 # a,b
-data_size = 256
+data_size = 1024*8
 seq_len = 4 # abba sequence to be detected only!
-num_layers = 3
+num_layers = 4
 rdata = np.random.randint(0, num_symbols, data_size) # 0=1, 1=b, for example
 
 # turn it into 1-hot encoding:
 data = np.empty([data_size, num_symbols])
 for i in range(0, data_size):
-   data[i,:] = ( rdata[i], not rdata[i] )
+   data[i,:] = ( rdata[i], not rdata[i] ) # only works for 2 symbols for now!
 
 print('dataset is:', data, 'with size:', data.shape)
 
 # create labels:
 label = np.zeros([data_size, num_symbols])
 count = 0
-for i in range(3, data_size):
+for i in range(seq_len, data_size):
    label[i,:] = (1,0)
    if (rdata[i-3]==0 and rdata[i-2]==1 and rdata[i-1]==1 and rdata[i]==0):
       label[i,:] = (0,1) 
@@ -54,7 +54,7 @@ print('labels is:', label, 'total number of example sequences:', count)
 # create model:
 model = nn.RNN(num_symbols, num_symbols, num_layers) # see: http://pytorch.org/docs/nn.html#rnn
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.005)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # test model, see: http://pytorch.org/docs/nn.html#rnn
 # inp = torch.zeros(seq_len, 1, num_symbols)
@@ -108,6 +108,8 @@ def train():
          # print info / statistics:
          # print('in:', data[i:i+seq_len,0], 'label:', label[i:i+seq_len,1], 'out:', output.data.numpy())
          # print(inputs, labels)
+         # input()
+
          running_loss += loss.data[0]
          num_ave = 64
          if i % num_ave == 0:   # print every ave mini-batches
@@ -120,10 +122,11 @@ def train():
 def test():
    model.eval()
    hidden = Variable(torch.zeros(num_layers, 1, num_symbols))
-   for i in range(0, data_size-seq_len, seq_len):
+   for i in range(0, 32):
       inputs = torch.from_numpy( data[i:i+seq_len,:]).view(seq_len, 1, num_symbols).float()
       labels = torch.from_numpy(label[i:i+seq_len,:]).view(seq_len, 1, num_symbols).float()
-      inputs = Variable(inputs)      
+      inputs = Variable(inputs)
+      hidden = repackage_hidden(hidden)     
       output, hidden = model(inputs, hidden)
       print('in:', data[i:i+seq_len,0], 'label:', label[i:i+seq_len,1], 'out:', output.data.numpy())
 
