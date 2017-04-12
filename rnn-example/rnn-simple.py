@@ -26,10 +26,11 @@ np.set_printoptions(precision=2)
 print('Simple RNN model to detect a abba/0110 sequence')
 
 # create a fake dataset of symbols a,b:
+rnn_neurons = 10
 num_symbols = 2 # a,b
-data_size = 1024*8
+data_size = 1024*4
 seq_len = 4 # abba sequence to be detected only!
-num_layers = 4
+num_layers = 2
 rdata = np.random.randint(0, num_symbols, data_size) # 0=1, 1=b, for example
 
 # turn it into 1-hot encoding:
@@ -52,7 +53,21 @@ print('labels is:', label, 'total number of example sequences:', count)
 
 
 # create model:
-model = nn.RNN(num_symbols, num_symbols, num_layers) # see: http://pytorch.org/docs/nn.html#rnn
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.rnn1 = nn.RNN(num_symbols, rnn_neurons, num_layers)
+        self.classifier1 = nn.Linear(rnn_neurons, num_symbols)
+
+    def forward(self, x, h):
+       y, h = self.rnn1(x,h)
+       return self.classifier1(y[seq_len-1]), h
+
+    def init_hidden(self):
+        return Variable(torch.zeros(num_layers, 1, rnn_neurons))
+
+
+model = Net()
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
@@ -81,7 +96,7 @@ num_epochs = 4
 
 def train():
    model.train()
-   hidden = Variable(torch.zeros(num_layers, 1, num_symbols))
+   hidden = model.init_hidden()
    
    for epoch in range(num_epochs):  # loop over the dataset multiple times
       running_loss = 0.0
@@ -101,7 +116,7 @@ def train():
          model.zero_grad()
          output, hidden = model(inputs, hidden)
          
-         loss = criterion(output, labels)
+         loss = criterion(output, labels[seq_len-1])
          loss.backward()
          optimizer.step()
 
@@ -121,8 +136,8 @@ def train():
 
 def test():
    model.eval()
-   hidden = Variable(torch.zeros(num_layers, 1, num_symbols))
-   for i in range(0, 32):
+   hidden = model.init_hidden()
+   for i in range(0, 64):
       inputs = torch.from_numpy( data[i:i+seq_len,:]).view(seq_len, 1, num_symbols).float()
       labels = torch.from_numpy(label[i:i+seq_len,:]).view(seq_len, 1, num_symbols).float()
       inputs = Variable(inputs)
