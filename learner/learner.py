@@ -6,7 +6,7 @@
 import sys
 import os
 import time
-import cv2 # install cv3, python3:  http://seeb0h.github.io/howto/howto-install-homebrew-python-opencv-osx-el-capitan/
+import cv2 # install cv3, python3:  brew install opencv3 --with-contrib --with-python3 --without-python
 # add to profile: export PYTHONPATH=$PYTHONPATH:/usr/local/Cellar/opencv3/3.2.0/lib/python3.6/site-packages/
 import numpy as np
 from scipy.spatial import distance
@@ -128,10 +128,12 @@ while True:
     pframe = cv2.resize(frame, dsize=(args.size, args.size))
 
     # prepare and normalize frame for processing:
-    pframe = np.swapaxes(pframe, 0, 2)
-    pframe = np.expand_dims(pframe, axis=0)
+    # pframe = np.swapaxes(pframe, 0, 2)
+    # pframe = np.expand_dims(pframe, axis=0)
+    # print(pframe)
     pframe = transformsImage(pframe)
     pframe = torch.autograd.Variable(pframe) # turn Tensor to variable required for pytorch processing
+    pframe = pframe.unsqueeze(0)
     
     # process via CNN model:
     output = model(pframe)
@@ -142,7 +144,7 @@ while True:
     output = output.data.numpy()[0] # get data from pytorch Variable, [0] = get vector from array
 
     # detect key presses:
-    keyPressed = cv2.waitKey(33)
+    keyPressed = cv2.waitKey(1)
     if keyPressed == ord('1'):
         protos[:,0] = output
         print("Learned object 1")
