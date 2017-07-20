@@ -128,9 +128,6 @@ while True:
     pframe = cv2.resize(frame, dsize=(args.size, args.size))
 
     # prepare and normalize frame for processing:
-    # pframe = np.swapaxes(pframe, 0, 2)
-    # pframe = np.expand_dims(pframe, axis=0)
-    # print(pframe)
     pframe = transformsImage(pframe)
     pframe = torch.autograd.Variable(pframe) # turn Tensor to variable required for pytorch processing
     pframe = pframe.unsqueeze(0)
