@@ -3,7 +3,7 @@
 import sys
 import os
 import time
-import cv2 # install cv3, python3:  http://seeb0h.github.io/howto/howto-install-homebrew-python-opencv-osx-el-capitan/
+import cv2 # install cv3, python3: brew install opencv3 --with-contrib --with-python3 --without-python
 # add to profile: export PYTHONPATH=$PYTHONPATH:/usr/local/Cellar/opencv3/3.2.0/lib/python3.6/site-packages/
 import numpy as np
 import argparse
@@ -106,8 +106,8 @@ while True:
     
     # prepare and normalize frame for processing:
     pframe = pframe[...,[2,1,0]]
-    pframe = np.transpose(pframe, (2,0,1))
     pframe = transformsImage(pframe)
+
     pframe = pframe.view(1, pframe.size(0), pframe.size(1), pframe.size(2))
     
     # process via CNN model:
