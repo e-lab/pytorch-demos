@@ -12,33 +12,42 @@ import torch.nn as nn
 import torchvision.models as models 
 import torchvision.transforms as transforms
 
+
 def define_and_parse_args():
     # argument Checking
     parser = argparse.ArgumentParser(description="Visor Demo")
-    # parser.add_argument('network', help='CNN model file')
-    parser.add_argument('categories', help='text file with categories')
-    parser.add_argument('-i', '--input',  type=int, default='0', help='camera device index or file name, default 0')
+    parser.add_argument('model', help='model directory')
+    parser.add_argument('-i', '--input', default='0', help='camera device index or file name, default 0')
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
-    # parser.add_argument('-S', '--stat', help='stat.txt file')
+    parser.add_argument('-t7', '--torch7', type=bool, default=False, help='Torch7 network or PyTorch (default)?')
     return parser.parse_args()
 
 def cat_file():
     # load classes file
     categories = []
-    if hasattr(args, 'categories') and args.categories:
-        try:
-            f = open(args.categories, 'r')
-            for line in f:
-                cat = line.split(',')[0].split('\n')[0]
-                if cat != 'classes':
-                    categories.append(cat)
-            f.close()
-            print('Number of categories:', len(categories))
-        except:
-            print('Error opening file ' + args.categories)
-            quit()
+    try:
+        f = open(args.model + '/categories.txt', 'r')
+        for line in f:
+            cat = line.split(',')[0].split('\n')[0]
+            if cat != 'classes':
+                categories.append(cat)
+        f.close()
+        print('Number of categories:', len(categories))
+    except:
+        print('Error opening file ' + args.model + '/categories.txt')
+        quit()
     return categories
 
+def patch(m):
+    s = str(type(m))
+    s = s[str.rfind(s, '.')+1:-2]
+    if s == 'Padding' and hasattr(m, 'nInputDim') and m.nInputDim == 3:
+        m.dim = m.dim + 1
+    if s == 'View' and len(m.size) == 1:
+        m.size = torch.Size([1,m.size[0]])
+    if hasattr(m, 'modules'):
+        for m in m.modules:
+            patch(m)
 
 print("Visor demo e-Lab")
 xres = 640
@@ -48,16 +57,34 @@ categories = cat_file() # load category file
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 # setup camera input:
-cam = cv2.VideoCapture(args.input)
-cam.set(3, xres)
-cam.set(4, yres)
+if args.input[0] >= '0' and args.input[0] <= '9':
+    cam = cv2.VideoCapture(int(args.input))
+    cam.set(3, xres)
+    cam.set(4, yres)
+    usecam = True
+else:
+    image = cv2.imread(args.input)
+    xres = image.shape[1]
+    yres = image.shape[0]
+    usecam = False
 
-# load CNN model:
-# model = torch.load(args.network)
-model = models.resnet18(pretrained=True)
-model.eval()
-# print model
-softMax = nn.Softmax() # to get probabilities out of CNN
+# load CNN moodels:
+if args.torch7:
+    print('Importing Torch7 model')
+    import torch.legacy.nn as nn
+    #load_lua does not recognize SpatialConvolutionMM
+    nn.SpatialConvolutionMM = nn.SpatialConvolution
+    from torch.utils.serialization import load_lua
+    model = load_lua(args.model + '/model.net')
+    stat = load_lua(args.model + '/stat.t7')
+    patch(model)
+else:
+    # model = torch.load(args.network)
+    model = models.resnet18(pretrained=True)
+    model.eval()
+    # print model
+    softMax = nn.Softmax() # to get probabilities out of CNN
+
 
 # image pre-processing functions:
 transformsImage = transforms.Compose([
@@ -82,19 +109,26 @@ while True:
     pframe = cv2.resize(frame, dsize=(args.size, args.size))
     
     # prepare and normalize frame for processing:
-    pframe = transformsImage(pframe)
-    pframe = torch.autograd.Variable(pframe) # turn Tensor to variable required for pytorch processing
-    pframe = pframe.unsqueeze(0)
+    if args.torch7:
+        pframe = pframe[...,[2,1,0]]
+        pframe = transformsImage(pframe)
+        pframe = pframe.view(1, pframe.size(0), pframe.size(1), pframe.size(2))
+        # process via CNN model:
+        output = model.forward(pframe)
+        output = output.numpy()[0]
 
-    
-    # process via CNN model:
-    output = model(pframe)
+    else:
+        pframe = transformsImage(pframe)
+        pframe = torch.autograd.Variable(pframe) # turn Tensor to variable required for pytorch processing
+        pframe = pframe.unsqueeze(0)
+        # process via CNN model:
+        output = model(pframe)
+        output = softMax(output) # convert CNN output to probabilities
+        output = output.data.numpy()[0] # get data from pytorch Variable, [0] = get vector from array
+
     if output is None:
         print('no output from CNN model file')
         break
-
-    output = softMax(output) # convert CNN output to probabilities
-    output = output.data.numpy()[0] # get data from pytorch Variable, [0] = get vector from array
     
     # process output and print results:
     order = output.argsort()
