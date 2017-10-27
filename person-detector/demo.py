@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 
 from models.spatial_detector import SpatialDetector
+from utils.nms import nms
 
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
@@ -26,10 +27,12 @@ def spatialize(old, new):
                     j.bias.data = i.bias.data
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Object Detection Demo")
+    parser = argparse.ArgumentParser(description="Person Detection Demo")
     parser.add_argument('model', help='model path')
-    #parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
-    parser.add_argument('-th', '--threshold', type=float, default=0.5, help='detection threshold')
+    parser.add_argument('-i', '--inp', default='0', help='camera device index, default 0')
+    parser.add_argument('-hd', type=bool, default=True, help='process full frame or resize to net eye size only')
+    parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
+    parser.add_argument('-t', '--threshold', type=float, default=0.5, help='detection threshold')
     return parser.parse_args()
 
 args = parse_args()
@@ -43,68 +46,11 @@ model.eval()
 
 print(model)
 
-cap = cv2.VideoCapture(0)
-
-sx = 112.5 - 355/2
-sy = 112.5 - 355/2
-dx = 32
-dy = 32
-
-def nms(boxes, thresh):
-
-    if len(boxes) < 2: return boxes
-
-    '''
-    final_boxes = []
-
-    for b in boxes:
-        for i, f in enumerate(final_boxes):
-    '''
-    boxes = np.array(boxes)
-    nboxes = np.array(boxes)
-    pick = []
-
-    # grab the coordinates of the bounding boxes
-    x1 = boxes[:,0]
-    y1 = boxes[:,1]
-    x2 = boxes[:,2]
-    y2 = boxes[:,3]
-    s  = boxes[:,4]
-    # compute the area of the bounding boxes and sort the bounding
-    # boxes by the bottom-right y-coordinate of the bounding box
-    area = (x2 - x1) * (y2 - y1)
-    idxs = np.argsort(s)
-
-    # keep looping while some indexes still remain in the indexes
-    # list
-    while len(idxs) > 0:
-        last = len(idxs) - 1
-        i = idxs[last]
-        pick.append(i)
-
-	# find the largest (x, y) coordinates for the start of
-	# the bounding box and the smallest (x, y) coordinates
-	# for the end of the bounding box
-        xx1 = np.maximum(x1[i], x1[idxs[:last]])
-        yy1 = np.maximum(y1[i], y1[idxs[:last]])
-        xx2 = np.minimum(x2[i], x2[idxs[:last]])
-        yy2 = np.minimum(y2[i], y2[idxs[:last]])
-
-	# compute the width and height of the bounding box
-        w = np.maximum(0, xx2 - xx1)
-        h = np.maximum(0, yy2 - yy1)
-
-	# compute the ratio of overlap
-        overlap = (w * h) / area[idxs[:last]]
-
-	# delete all indexes from the index list that have
-        todel = np.concatenate(([last], np.where(overlap > thresh)[0]))
-        idxs = np.delete(idxs, todel)
-
-        if np.any(np.where(overlap > thresh)[0]):
-            idxs = np.append(idxs, i)
-
-    return nboxes[pick]
+# setup camera input:
+cam = cv2.VideoCapture(int(args.input))
+xres = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
+yres = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+print('camera width, height:', xres, ' x ', yres)
 
 while(True):
 
@@ -114,8 +60,14 @@ while(True):
     ret, frame = cap.read()
 
     s = time.time()
-    # Our operations on the frame come here
-    frame = cv2.resize(frame, (640, 360))#(640, 360))
+
+    if not args.hd:
+        if xres > yres:
+            frame = frame[:,int((xres - yres)/2):int((xres+yres)/2),:]
+        else:
+            frame = frame[int((yres - xres)/2):int((yres+xres)/2),:,:]
+        frame = cv2.resize(frame, dsize=(args.size, args.size))
+
     img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     img = torch.from_numpy(img).float() / 255
     img = img.permute(2,0,1).contiguous()
