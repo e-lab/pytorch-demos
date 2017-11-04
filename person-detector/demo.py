@@ -28,12 +28,14 @@ def spatialize(old, new):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Person Detection Demo")
-    parser.add_argument('model', help='model path')
-    parser.add_argument('-i', '--input', default='0', help='camera device index, default 0')
-    parser.add_argument('-hd', type=bool, default=True, help='process full frame or resize to net eye size only')
-    parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
-    parser.add_argument('-t', '--threshold', type=float, default=0.5, help='detection threshold')
+    __ = parser.add_argument
+    __('model', help='model path')
+    __('-i', '--input', default='0', help='camera device index, default 0')
+    __('--res',      type=str, default='VGA', help='camera resolution: VGA | HD | FHD | QHD')
+    __('-s', '--size', type=int, default=224, help='network input size')
+    __('-t', '--threshold', type=float, default=0.5, help='detection threshold')
     return parser.parse_args()
+
 
 args = parse_args()
 font = cv2.FONT_HERSHEY_PLAIN
@@ -47,10 +49,21 @@ model.eval()
 print(model)
 
 # setup camera input:
+res = { 'QHD': (1440, 2560),
+        'FHD': (1080, 1920),
+        'HD':  (720, 1280),
+        'VGA': (480, 640)}
+xres = res[args.res][1]
+yres = res[args.res][0]
+
 cam = cv2.VideoCapture(int(args.input))
+cam.set(cv2.CAP_PROP_FRAME_WIDTH, xres)
+cam.set(cv2.CAP_PROP_FRAME_HEIGHT, yres)
+
 xres = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
 yres = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
 print('camera width, height:', xres, ' x ', yres)
+
 
 while(True):
 
@@ -61,12 +74,12 @@ while(True):
 
     s = time.time()
 
-    if not args.hd:
-        if xres > yres:
-            frame = frame[:,int((xres - yres)/2):int((xres+yres)/2),:]
-        else:
-            frame = frame[int((yres - xres)/2):int((yres+xres)/2),:,:]
-        frame = cv2.resize(frame, dsize=(args.size, args.size))
+    # if not args.hd:
+    #     if xres > yres:
+    #         frame = frame[:,int((xres - yres)/2):int((xres+yres)/2),:]
+    #     else:
+    #         frame = frame[int((yres - xres)/2):int((yres+xres)/2),:,:]
+    #     frame = cv2.resize(frame, dsize=(args.size, args.size))
 
     img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     img = torch.from_numpy(img).float() / 255
