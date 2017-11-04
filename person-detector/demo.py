@@ -29,7 +29,7 @@ def spatialize(old, new):
 def parse_args():
     parser = argparse.ArgumentParser(description="Person Detection Demo")
     parser.add_argument('model', help='model path')
-    parser.add_argument('-i', '--inp', default='0', help='camera device index, default 0')
+    parser.add_argument('-i', '--input', default='0', help='camera device index, default 0')
     parser.add_argument('-hd', type=bool, default=True, help='process full frame or resize to net eye size only')
     parser.add_argument('-s', '--size', type=int, default=224, help='network input size')
     parser.add_argument('-t', '--threshold', type=float, default=0.5, help='detection threshold')
@@ -57,7 +57,7 @@ while(True):
     boxes = []
 
     # Capture frame-by-frame
-    ret, frame = cap.read()
+    ret, frame = cam.read()
 
     s = time.time()
 
