@@ -6,3 +6,7 @@
 *.npy
 
 *.avi
+*.pth
+seq-learning-basic/results/Att.txt
+*.pdf
+*.txt
