@@ -138,7 +138,7 @@ try:
 
         if epoch % args.print_every == 0:
             print('[elapsed time: %s, epoch: %d,  percent complete: %d%%, loss: %.4f]' % (time_since(start), epoch, epoch / args.epochs * 100, loss))
-            # print(generate(model, 'Wh', 100), '\n')
+            print(generate(model, 'Wh', 100), '\n')
 
     print("Saving...")
     save()

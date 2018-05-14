@@ -43,7 +43,7 @@ class CNN(nn.Module):
 
         self.encoder = nn.Embedding(input_size, hidden_size)
         self.c1 = nn.Conv2d(1, hidden_size, [self.pint, 4*self.pint], stride=4)
-        # self.c2 = nn.Conv2d(hidden_size, hidden_size*2, 9, stride=4)
+        # self.c2 = nn.Conv2d(hidden_size, hidden_size, 9, stride=4)
         self.decoder = nn.Linear(hidden_size, output_size)
 
     def forward(self, input):
