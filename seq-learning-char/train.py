@@ -113,13 +113,12 @@ def train(inp, target):
             in_array[0] = inp[c]
             in_array = numpy.roll(in_array, 1)
             output, hidden = model(inp[c], hidden)
+            loss += criterion(output, target[c].view(1))
 
     elif args.sequencer == 'CNN':
         for c in range(args.chunk_len-args.pint):
             output = model(inp[c:c+args.pint])
-        
-        # print( 'batch: in, out, target:', inp[c].data.numpy(), numpy.argmax(output.data.numpy()), target[c].data.numpy())
-        loss += criterion(output, target[c+args.pint].view(1))
+            loss += criterion(output, target[c+args.pint].view(1))
 
     loss.backward()
     model_optimizer.step()
@@ -127,17 +126,14 @@ def train(inp, target):
     return loss.item() / args.chunk_len
 
 def save():
-    save_filename = os.path.splitext(os.path.basename(filename))[0] + '.pt'
+    save_filename = os.path.splitext(os.path.basename(filename))[0] + '_' + args.sequencer + '.pt'
     torch.save(model, save_filename)
     print('Saved as %s' % save_filename)
 
 try:
     print("Training for %d epochs..." % args.epochs)
     for epoch in range(1, args.epochs + 1):
-        if args.sequencer == 'GRU':
-            loss = train(*random_training_set(args.chunk_len))
-        elif args.sequencer == 'CNN':
-            loss = train(*random_training_set(args.chunk_len))
+        loss = train(*random_training_set(args.chunk_len))
         loss_avg += loss
 
         if epoch % args.print_every == 0:
