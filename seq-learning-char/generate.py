@@ -5,7 +5,7 @@ import torch
 from helpers import *
 from model import *
 
-def generate(decoder, prime_str='A', predict_len=100, temperature=0.8):
+def generate_GRU(decoder, prime_str='A', predict_len=100, temperature=0.8):
     hidden = decoder.init_hidden()
     prime_input = char_tensor(prime_str)
     predicted = prime_str
@@ -30,17 +30,32 @@ def generate(decoder, prime_str='A', predict_len=100, temperature=0.8):
 
     return predicted
 
-if __name__ == '__main__':
-    # Parse command line arguments
-    import argparse
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument('filename', type=str)
-    argparser.add_argument('-p', '--prime_str', type=str, default='A')
-    argparser.add_argument('-l', '--predict_len', type=int, default=100)
-    argparser.add_argument('-t', '--temperature', type=float, default=0.8)
-    args = argparser.parse_args()
 
-    decoder = torch.load(args.filename)
-    del args.filename
-    print(generate(decoder, **vars(args)))
+def generate_CNN(decoder, prime_str, predict_len=100, temperature=0.8):
+    
+    predicted = ''
+    # print('prime_str',prime_str,prime_str.shape[0])
+    for i in range(prime_str.shape[0]): 
+        predicted += all_characters[prime_str[i]]
 
+    # print('prime predicted string:', predicted)
+    inp = prime_str
+
+    for p in range(predict_len):
+        print('inp:', inp, inp.shape)
+        output = decoder(inp)
+        
+        # Sample from the network as a multinomial distribution
+        output_dist = output.data.view(-1).div(temperature).exp()
+        top_i = torch.multinomial(output_dist, 1)[0]
+        
+        # Add predicted character to string and use as next input
+        predicted_char = all_characters[top_i]
+        print(top_i)
+        predicted += predicted_char
+        # print('predicted:', predicted)
+        # shift to left and add new predicted char value:
+        inp[:-1] = inp[1:]
+        inp[-1] = top_i
+
+    return predicted

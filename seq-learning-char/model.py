@@ -39,20 +39,22 @@ class CNN(nn.Module):
         self.pint = pint # how much older samples to integrate
         self.output_size = output_size
 
-        # print('SIZES: ', input_size, hidden_size, pint, output_size)
+        # print('SIZES: ', self.input_size, self.hidden_size, self.pint, self.output_size)
 
-        self.encoder = nn.Embedding(input_size, hidden_size)
-        self.c1 = nn.Conv2d(1, hidden_size, [self.pint, 4*self.pint], stride=4)
-        # self.c2 = nn.Conv2d(hidden_size, hidden_size, 9, stride=4)
-        self.decoder = nn.Linear(hidden_size, output_size)
+        self.encoder = nn.Embedding(self.input_size, self.hidden_size)
+        self.c1 = nn.Conv2d(1, self.hidden_size, [self.pint/4, self.hidden_size], stride=[self.pint/8, self.hidden_size])
+        self.c2 = nn.Conv2d(self.hidden_size, self.hidden_size, [7,1], stride=1)
+        self.decoder = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input):
         # print('in', input)
         input = self.encoder(input)#.view(1, -1))
         # print('iin', input.shape)
-        output = self.c1(input.view(1, 1, input.size(0), input.size(1)))
-        # print('out', output.shape)
-        output = self.decoder(output.view(1, -1))
+        oc1 = self.c1(input.view(1, 1, input.size(0), input.size(1)))
+        # print('out_c1', oc1.shape)
+        oc2 = self.c2(oc1)
+        # print('out_c2', oc2.shape)
+        output = self.decoder(oc2.view(1, -1))
         # print('out', output)
         return output
 

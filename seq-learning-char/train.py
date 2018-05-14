@@ -25,11 +25,10 @@ parser.add_argument('--epochs', type=int, default=1000,
                     # help='Print PDF or display image only')
 parser.add_argument('--hidden_size', type=int, default=64)
 parser.add_argument('--n_layers', type=int, default=2, help='GRU layers')
-parser.add_argument('--pint', type=int, default=16, help='CNN/Att past samples to integrate')
+parser.add_argument('--pint', type=int, default=128, help='CNN/Att past samples to integrate')
 parser.add_argument('--print_every', type=int, default=25)
 parser.add_argument('--learning_rate', type=float, default=0.01)
 parser.add_argument('--chunk_len', type=int, default=200)
-parser.add_argument('--nseq', type=int, default=128)
 args = parser.parse_args()
 
 import os
@@ -106,19 +105,17 @@ def train(inp, target):
     model.zero_grad()
     loss = 0
 
-    in_array = numpy.zeros(args.nseq) # where we save inputs for conv(CNN)/attention models
-
     if args.sequencer == 'GRU':
         for c in range(args.chunk_len):        
-            in_array[0] = inp[c]
-            in_array = numpy.roll(in_array, 1)
+            # print('I,T', inp[c],target[c])
             output, hidden = model(inp[c], hidden)
             loss += criterion(output, target[c].view(1))
 
     elif args.sequencer == 'CNN':
         for c in range(args.chunk_len-args.pint):
+            # print('2-I,T', c, inp[c:c+args.pint], inp[c:c+args.pint].shape, target[c+args.pint-1])
             output = model(inp[c:c+args.pint])
-            loss += criterion(output, target[c+args.pint].view(1))
+            loss += criterion(output, target[c+args.pint-1].view(1))
 
     loss.backward()
     model_optimizer.step()
@@ -138,7 +135,15 @@ try:
 
         if epoch % args.print_every == 0:
             print('[elapsed time: %s, epoch: %d,  percent complete: %d%%, loss: %.4f]' % (time_since(start), epoch, epoch / args.epochs * 100, loss))
-            print(generate(model, 'Wh', 100), '\n')
+            if args.sequencer == 'GRU':
+                chunk_len = args.pint
+                start_index = random.randint(0, file_len - chunk_len)
+                end_index = start_index + chunk_len + 1
+                init_str = file[start_index:end_index]
+                print(generate_GRU(model, init_str, 100), '\n')
+            elif args.sequencer == 'CNN':
+                init_str,_ = random_training_set(args.pint)
+                print(generate_CNN(model, init_str, 100), '\n')
 
     print("Saving...")
     save()
