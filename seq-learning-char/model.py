@@ -7,6 +7,8 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from attention import Attention
+
 
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, n_layers=1):
@@ -42,21 +44,60 @@ class CNN(nn.Module):
         # print('SIZES: ', self.input_size, self.hidden_size, self.pint, self.output_size)
 
         self.encoder = nn.Embedding(self.input_size, self.hidden_size)
-        self.c1 = nn.Conv2d(1, self.hidden_size, [self.pint/4, self.hidden_size], stride=[self.pint/8, self.hidden_size])
-        self.c2 = nn.Conv2d(self.hidden_size, self.hidden_size, [7,1], stride=1)
-        self.decoder = nn.Linear(self.hidden_size, self.output_size)
+        # self.c1 = nn.Conv2d(1, self.hidden_size, [self.pint, self.hidden_size], stride=[self.pint, self.hidden_size]) # 1 conv only!
+        
+        # 3 conv case:
+        self.c1 = nn.Conv2d(1, self.hidden_size, [self.pint/8, self.hidden_size], stride=[self.pint/16, self.hidden_size])
+        self.c2 = nn.Conv1d(self.hidden_size, int(self.hidden_size/2), 8)
+        self.c3 = nn.Conv1d(int(self.hidden_size/2), int(self.hidden_size/2), 8)
+        self.decoder = nn.Linear(int(self.hidden_size/2), self.output_size)
 
-    def forward(self, input):
-        # print('in', input)
-        input = self.encoder(input)#.view(1, -1))
-        # print('iin', input.shape)
-        oc1 = self.c1(input.view(1, 1, input.size(0), input.size(1)))
+    def forward(self, input, position):
+        # print('in', input, position)
+        enc = self.encoder(input)
+        # print('enc', enc)
+        inn = enc + position
+        # print('enc+pos', inn, position)
+        # print('inn', inn.shape)
+        oc1 = self.c1(inn.view(1, 1, inn.size(0), inn.size(1)))
         # print('out_c1', oc1.shape)
-        oc2 = self.c2(oc1)
+        oc2 = self.c2(oc1.view(1,self.hidden_size,-1))
         # print('out_c2', oc2.shape)
-        output = self.decoder(oc2.view(1, -1))
+        oc3 = self.c3(oc2)
+        # print('out_c3', oc3.shape)
+        output = self.decoder(oc3.view(1, -1))
         # print('out', output)
         return output
 
-    def init_hidden(self):
-        return 0
+
+
+# class Att(nn.Module):
+#     def __init__(self, input_size, hidden_size, pint, output_size):
+#         super(Att, self).__init__()
+#         self.input_size = input_size
+#         self.hidden_size = hidden_size
+#         self.pint = pint # how much older samples to integrate
+#         self.output_size = output_size
+
+#         print('SIZES: ', self.input_size, self.hidden_size, self.pint, self.output_size)
+
+#         self.encoder = nn.Embedding(self.input_size, self.hidden_size)
+#         self.c1 = nn.Conv2d(1, self.hidden_size, [self.pint, self.hidden_size], stride=[self.pint, self.hidden_size])
+#         self.a1 = Attention(self.hidden_size)
+#         self.decoder = nn.Linear(self.hidden_size, self.output_size)
+
+#         self.output = torch.zeros(1, 1, hidden_size)
+
+#     def forward(self, input):
+#         # print('in', input)
+#         input = self.encoder(input)#.view(1, -1))
+#         print('iin', input.shape)
+#         oc1 = self.c1(input.view(1, 1, input.size(0), input.size(1)))
+#         print('out_c1', oc1.shape)
+#         context = input.view(1, input.size(0), input.size(1))
+#         oa1, attn = self.a1(oc1, context)
+#         print('out_a1', oa1.shape)
+#         output = self.decoder(oa1.view(1, -1))
+#         # print('out', output)
+#         return output
+

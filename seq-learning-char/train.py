@@ -14,6 +14,7 @@ import os
 from helpers import *
 from model import *
 from generate import *
+from profile import *
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Learning char sequences with LSTM, CNN, Attention')
@@ -83,9 +84,16 @@ def add_hooks(m):
 # define model:
 if args.sequencer == 'GRU':
     model = RNN(n_characters, args.hidden_size, n_characters, args.n_layers)
+    model.apply(add_hooks)
     hidden = model.init_hidden()
 elif args.sequencer == 'CNN':
     model = CNN(n_characters, args.hidden_size, args.pint, n_characters)
+    model.apply(add_hooks)
+elif args.sequencer == 'Att':
+    print('Not implemented yet!')
+    os._exit()
+    # model = Att(n_characters, args.hidden_size, args.pint, n_characters)
+    # model.apply(add_hooks)
 else:
     print('No model specified!')
     os._exit()
@@ -111,10 +119,18 @@ def train(inp, target):
             output, hidden = model(inp[c], hidden)
             loss += criterion(output, target[c].view(1))
 
-    elif args.sequencer == 'CNN':
-        for c in range(args.chunk_len-args.pint):
+    elif args.sequencer == 'CNN' or 'Att':
+        for c in range(args.chunk_len):
             # print('2-I,T', c, inp[c:c+args.pint], inp[c:c+args.pint].shape, target[c+args.pint-1])
-            output = model(inp[c:c+args.pint])
+            # predicted = ''
+            # for i in range(inp[c:c+args.pint].shape[0]): 
+                # predicted += all_characters[inp[c+i]]
+
+            # print('prime predicted string:', predicted)
+            # print('next char', all_characters[target[c+args.pint-1]], '\n')
+
+            position = c/args.chunk_len-0.5 # positional vector to add to input
+            output = model(inp[c:c+args.pint], position)
             loss += criterion(output, target[c+args.pint-1].view(1))
 
     loss.backward()
@@ -130,7 +146,11 @@ def save():
 try:
     print("Training for %d epochs..." % args.epochs)
     for epoch in range(1, args.epochs + 1):
-        loss = train(*random_training_set(args.chunk_len))
+        if args.sequencer == 'GRU':
+            iters = args.chunk_len
+        elif args.sequencer == 'CNN' or 'Att':
+            iters = args.chunk_len + args.pint
+        loss = train(*random_training_set(iters))
         loss_avg += loss
 
         if epoch % args.print_every == 0:
@@ -141,12 +161,26 @@ try:
                 end_index = start_index + chunk_len + 1
                 init_str = file[start_index:end_index]
                 print(generate_GRU(model, init_str, 100), '\n')
-            elif args.sequencer == 'CNN':
+            elif args.sequencer == 'CNN' or 'Att':
                 init_str,_ = random_training_set(args.pint)
                 print(generate_CNN(model, init_str, 100), '\n')
 
     print("Saving...")
     save()
+
+    # profile networks and print:
+    total_ops = 0
+    total_params = 0
+    for m in model.modules():
+        if len(list(m.children())) > 0: continue
+        total_ops += m.total_ops
+        total_params += m.total_params
+    total_ops = total_ops
+    total_params = total_params
+
+    print('Profiler results:')
+    print("#Ops: %f GOps"%(total_ops/1e9))
+    print("#Parameters: %f M"%(total_params/1e6))
 
 except KeyboardInterrupt:
     print("Saving before quit...")

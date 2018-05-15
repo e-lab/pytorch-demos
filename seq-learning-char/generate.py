@@ -42,8 +42,9 @@ def generate_CNN(decoder, prime_str, predict_len=100, temperature=0.8):
     inp = prime_str
 
     for p in range(predict_len):
-        print('inp:', inp, inp.shape)
-        output = decoder(inp)
+        # print('inp:', inp, inp.shape)
+        position = p/predict_len-0.5 # positional vector to add to input
+        output = decoder(inp, position)
         
         # Sample from the network as a multinomial distribution
         output_dist = output.data.view(-1).div(temperature).exp()
@@ -51,7 +52,7 @@ def generate_CNN(decoder, prime_str, predict_len=100, temperature=0.8):
         
         # Add predicted character to string and use as next input
         predicted_char = all_characters[top_i]
-        print(top_i)
+        # print(top_i)
         predicted += predicted_char
         # print('predicted:', predicted)
         # shift to left and add new predicted char value:
