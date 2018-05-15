@@ -2,6 +2,7 @@
 # testing learning in LSTM, CNN, Attention neural networks: learning of sine-wave data
 # refer to: https://towardsdatascience.com/memory-attention-sequences-37456d271992
 # and: https://towardsdatascience.com/the-fall-of-rnn-lstm-2d1594c74ce0
+# and https://openreview.net/forum?id=rk8wKk-R-
 # inspired from: https://github.com/spro/practical-pytorch
 
 import torch
@@ -40,17 +41,11 @@ class CNN(nn.Module):
         self.hidden_size = hidden_size
         self.pint = pint # how much older samples to integrate
         self.output_size = output_size
+        print('SIZES: ', input_size, hidden_size, pint, output_size)
 
-        # print('SIZES: ', self.input_size, self.hidden_size, self.pint, self.output_size)
-
-        self.encoder = nn.Embedding(self.input_size, self.hidden_size)
-        # self.c1 = nn.Conv2d(1, self.hidden_size, [self.pint, self.hidden_size], stride=[self.pint, self.hidden_size]) # 1 conv only!
-        
-        # 3 conv case:
-        self.c1 = nn.Conv2d(1, self.hidden_size, [self.pint/8, self.hidden_size], stride=[self.pint/16, self.hidden_size])
-        self.c2 = nn.Conv1d(self.hidden_size, int(self.hidden_size/2), 8)
-        self.c3 = nn.Conv1d(int(self.hidden_size/2), int(self.hidden_size/2), 8)
-        self.decoder = nn.Linear(int(self.hidden_size/2), self.output_size)
+        self.encoder = nn.Embedding(input_size, hidden_size)
+        self.c1 = nn.Conv2d(1, hidden_size, [pint, hidden_size])
+        self.decoder = nn.Linear(hidden_size, output_size)
 
     def forward(self, input, position):
         # print('in', input, position)
@@ -58,46 +53,8 @@ class CNN(nn.Module):
         # print('enc', enc)
         inn = enc + position
         # print('enc+pos', inn, position)
-        # print('inn', inn.shape)
+        # print('inn', inn.shape) 
         oc1 = self.c1(inn.view(1, 1, inn.size(0), inn.size(1)))
-        # print('out_c1', oc1.shape)
-        oc2 = self.c2(oc1.view(1,self.hidden_size,-1))
-        # print('out_c2', oc2.shape)
-        oc3 = self.c3(oc2)
-        # print('out_c3', oc3.shape)
-        output = self.decoder(oc3.view(1, -1))
+        output = self.decoder(oc1.view(1, -1))
         # print('out', output)
         return output
-
-
-
-# class Att(nn.Module):
-#     def __init__(self, input_size, hidden_size, pint, output_size):
-#         super(Att, self).__init__()
-#         self.input_size = input_size
-#         self.hidden_size = hidden_size
-#         self.pint = pint # how much older samples to integrate
-#         self.output_size = output_size
-
-#         print('SIZES: ', self.input_size, self.hidden_size, self.pint, self.output_size)
-
-#         self.encoder = nn.Embedding(self.input_size, self.hidden_size)
-#         self.c1 = nn.Conv2d(1, self.hidden_size, [self.pint, self.hidden_size], stride=[self.pint, self.hidden_size])
-#         self.a1 = Attention(self.hidden_size)
-#         self.decoder = nn.Linear(self.hidden_size, self.output_size)
-
-#         self.output = torch.zeros(1, 1, hidden_size)
-
-#     def forward(self, input):
-#         # print('in', input)
-#         input = self.encoder(input)#.view(1, -1))
-#         print('iin', input.shape)
-#         oc1 = self.c1(input.view(1, 1, input.size(0), input.size(1)))
-#         print('out_c1', oc1.shape)
-#         context = input.view(1, input.size(0), input.size(1))
-#         oa1, attn = self.a1(oc1, context)
-#         print('out_a1', oa1.shape)
-#         output = self.decoder(oa1.view(1, -1))
-#         # print('out', output)
-#         return output
-

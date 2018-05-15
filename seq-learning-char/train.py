@@ -2,6 +2,7 @@
 # testing learning in LSTM, CNN, Attention neural networks: learning of sine-wave data
 # refer to: https://towardsdatascience.com/memory-attention-sequences-37456d271992
 # and: https://towardsdatascience.com/the-fall-of-rnn-lstm-2d1594c74ce0
+# and https://openreview.net/forum?id=rk8wKk-R-
 # inspired from: https://github.com/spro/practical-pytorch
 
 import torch
@@ -26,7 +27,7 @@ parser.add_argument('--epochs', type=int, default=1000,
                     # help='Print PDF or display image only')
 parser.add_argument('--hidden_size', type=int, default=64)
 parser.add_argument('--n_layers', type=int, default=2, help='GRU layers')
-parser.add_argument('--pint', type=int, default=128, help='CNN/Att past samples to integrate')
+parser.add_argument('--pint', type=int, default=16, help='CNN/Att past samples to integrate')
 parser.add_argument('--print_every', type=int, default=25)
 parser.add_argument('--learning_rate', type=float, default=0.01)
 parser.add_argument('--chunk_len', type=int, default=200)
@@ -35,10 +36,11 @@ args = parser.parse_args()
 import os
 
 # load or download tinyshakespeare data:
-filename = 'input.txt'
+filename = 'tinyshakespeare.txt'
 if not os.path.isfile(filename):
     os.system('wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt')
-file, file_len = read_file('input.txt')
+    os.system('mv input.txt tinyshakespeare.txt')
+file, file_len = read_file('tinyshakespeare.txt')
 
 
 def random_training_set(chunk_len):
@@ -114,13 +116,15 @@ def train(inp, target):
     loss = 0
 
     if args.sequencer == 'GRU':
-        for c in range(args.chunk_len):        
+        iters = args.chunk_len
+        for c in range(iters):        
             # print('I,T', inp[c],target[c])
             output, hidden = model(inp[c], hidden)
             loss += criterion(output, target[c].view(1))
 
     elif args.sequencer == 'CNN' or 'Att':
-        for c in range(args.chunk_len):
+        iters = args.chunk_len-args.pint
+        for c in range(iters):
             # print('2-I,T', c, inp[c:c+args.pint], inp[c:c+args.pint].shape, target[c+args.pint-1])
             # predicted = ''
             # for i in range(inp[c:c+args.pint].shape[0]): 
@@ -136,7 +140,7 @@ def train(inp, target):
     loss.backward()
     model_optimizer.step()
 
-    return loss.item() / args.chunk_len
+    return loss.item() / iters
 
 def save():
     save_filename = os.path.splitext(os.path.basename(filename))[0] + '_' + args.sequencer + '.pt'
@@ -146,11 +150,7 @@ def save():
 try:
     print("Training for %d epochs..." % args.epochs)
     for epoch in range(1, args.epochs + 1):
-        if args.sequencer == 'GRU':
-            iters = args.chunk_len
-        elif args.sequencer == 'CNN' or 'Att':
-            iters = args.chunk_len + args.pint
-        loss = train(*random_training_set(iters))
+        loss = train(*random_training_set(args.chunk_len))
         loss_avg += loss
 
         if epoch % args.print_every == 0:
