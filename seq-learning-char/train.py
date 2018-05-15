@@ -19,6 +19,7 @@ from profile import *
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Learning char sequences with LSTM, CNN, Attention')
+parser.add_argument('filename', type=str)
 parser.add_argument('--sequencer', type=str, default='GRU', 
                     help='sequencer model to use: GRU, CNN, Att')
 parser.add_argument('--epochs', type=int, default=1000, 
@@ -36,11 +37,12 @@ args = parser.parse_args()
 import os
 
 # load or download tinyshakespeare data:
-filename = 'tinyshakespeare.txt'
-if not os.path.isfile(filename):
-    os.system('wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt')
-    os.system('mv input.txt tinyshakespeare.txt')
-file, file_len = read_file('tinyshakespeare.txt')
+if args.filename == None:
+    args.filename = 'tinyshakespeare.txt'
+    if not os.path.isfile(args.filename):
+        os.system('wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt')
+        os.system('mv input.txt tinyshakespeare.txt')
+file, file_len = read_file(args.filename)
 
 
 def random_training_set(chunk_len):
@@ -143,7 +145,7 @@ def train(inp, target):
     return loss.item() / iters
 
 def save():
-    save_filename = os.path.splitext(os.path.basename(filename))[0] + '_' + args.sequencer + '.pt'
+    save_filename = os.path.splitext(os.path.basename(args.filename))[0] + '_' + args.sequencer + '.pt'
     torch.save(model, save_filename)
     print('Saved as %s' % save_filename)
 
