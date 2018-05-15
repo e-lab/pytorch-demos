@@ -27,7 +27,7 @@ parser.add_argument('--epochs', type=int, default=1000,
 # parser.add_argument('--pprint', type=bool, default=True, 
                     # help='Print PDF or display image only')
 parser.add_argument('--hidden_size', type=int, default=64)
-parser.add_argument('--n_layers', type=int, default=2, help='GRU layers')
+parser.add_argument('--n_layers', type=int, default=1, help='GRU layers')
 parser.add_argument('--pint', type=int, default=16, help='CNN/Att past samples to integrate')
 parser.add_argument('--print_every', type=int, default=25)
 parser.add_argument('--learning_rate', type=float, default=0.01)
@@ -45,10 +45,15 @@ if args.filename == None:
 file, file_len = read_file(args.filename)
 
 
-def random_training_set(chunk_len):
+def random_piece_text(chunk_len):
     start_index = random.randint(0, file_len - chunk_len)
     end_index = start_index + chunk_len + 1
     chunk = file[start_index:end_index]
+    return chunk
+
+
+def random_training_set(chunk_len):
+    chunk = random_piece_text(chunk_len)
     inp = char_tensor(chunk[:-1])
     target = char_tensor(chunk[1:])
     return inp, target
@@ -155,17 +160,15 @@ try:
         loss = train(*random_training_set(args.chunk_len))
         loss_avg += loss
 
+        # generate some text to see performance:
         if epoch % args.print_every == 0:
             print('[elapsed time: %s, epoch: %d,  percent complete: %d%%, loss: %.4f]' % (time_since(start), epoch, epoch / args.epochs * 100, loss))
             if args.sequencer == 'GRU':
-                chunk_len = args.pint
-                start_index = random.randint(0, file_len - chunk_len)
-                end_index = start_index + chunk_len + 1
-                init_str = file[start_index:end_index]
-                print(generate_GRU(model, init_str, 100), '\n')
+                init_str = random_piece_text(args.pint)
+                generate_GRU(model, init_str, 100)
             elif args.sequencer == 'CNN' or 'Att':
                 init_str,_ = random_training_set(args.pint)
-                print(generate_CNN(model, init_str, 100), '\n')
+                generate_CNN(model, init_str, 100)
 
     print("Saving...")
     save()

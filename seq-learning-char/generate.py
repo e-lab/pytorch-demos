@@ -1,6 +1,8 @@
 # https://github.com/spro/practical-pytorch
 
 import torch
+import colorama
+from colorama import Fore, Style
 
 from helpers import *
 from model import *
@@ -27,8 +29,10 @@ def generate_GRU(decoder, prime_str='A', predict_len=100, temperature=0.8):
         predicted_char = all_characters[top_i]
         predicted += predicted_char
         inp = char_tensor(predicted_char)
-
-    return predicted
+    
+    print(Fore.BLUE + predicted[:len(prime_str)] + Fore.GREEN + predicted[len(prime_str):])
+    print(Style.RESET_ALL)
+    # return predicted
 
 
 def generate_CNN(decoder, prime_str, predict_len=100, temperature=0.8):
@@ -59,4 +63,6 @@ def generate_CNN(decoder, prime_str, predict_len=100, temperature=0.8):
         inp[:-1] = inp[1:]
         inp[-1] = top_i
 
-    return predicted
+    print(Fore.BLUE + predicted[:len(prime_str)] + Fore.GREEN + predicted[len(prime_str):])
+    print(Style.RESET_ALL)
+    # return predicted
