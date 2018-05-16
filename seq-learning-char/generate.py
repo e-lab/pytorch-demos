@@ -1,11 +1,17 @@
 # https://github.com/spro/practical-pytorch
 
 import torch
-import colorama
-from colorama import Fore, Style
+import os
 
 from helpers import *
 from model import *
+
+# Color Palette
+CP_R = '\033[31m'
+CP_G = '\033[32m'
+CP_B = '\033[34m'
+CP_Y = '\033[33m'
+CP_C = '\033[0m'
 
 def generate_GRU(decoder, prime_str='A', predict_len=100, temperature=0.8):
     hidden = decoder.init_hidden()
@@ -29,9 +35,8 @@ def generate_GRU(decoder, prime_str='A', predict_len=100, temperature=0.8):
         predicted_char = all_characters[top_i]
         predicted += predicted_char
         inp = char_tensor(predicted_char)
-    
-    print(Fore.BLUE + predicted[:len(prime_str)] + Fore.GREEN + predicted[len(prime_str):])
-    print(Style.RESET_ALL)
+
+    print(CP_B + predicted[:len(prime_str)] + CP_G + predicted[len(prime_str):] + CP_C)
     # return predicted
 
 
@@ -63,6 +68,5 @@ def generate_CNN(decoder, prime_str, predict_len=100, temperature=0.8):
         inp[:-1] = inp[1:]
         inp[-1] = top_i
 
-    print(Fore.BLUE + predicted[:len(prime_str)] + Fore.GREEN + predicted[len(prime_str):])
-    print(Style.RESET_ALL)
+    print(CP_B + predicted[:len(prime_str)] + CP_G + predicted[len(prime_str):] + CP_C)
     # return predicted

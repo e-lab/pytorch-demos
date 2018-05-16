@@ -161,14 +161,15 @@ try:
         loss_avg += loss
 
         # generate some text to see performance:
+        test_len = 100
         if epoch % args.print_every == 0:
             print('[elapsed time: %s, epoch: %d,  percent complete: %d%%, loss: %.4f]' % (time_since(start), epoch, epoch / args.epochs * 100, loss))
             if args.sequencer == 'GRU':
-                init_str = random_piece_text(args.pint)
-                generate_GRU(model, init_str, 100)
+                init_str = random_piece_text(args.pint+test_len)
+                generate_GRU(model, init_str[:args.pint], test_len)
             elif args.sequencer == 'CNN' or 'Att':
-                init_str,_ = random_training_set(args.pint)
-                generate_CNN(model, init_str, 100)
+                init_str,_ = random_training_set(args.pint+test_len)
+                generate_CNN(model, init_str[:args.pint], test_len)
 
     print("Saving...")
     save()
