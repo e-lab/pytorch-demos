@@ -6,12 +6,14 @@ It was deisgned to compare learning models
 
 
 ### GRU
-min loss: 0.0888
+simple text (1 song repeated many times): min loss: 0.0888
+tinyshakespeare: min loss: 1.4
 
 
 
 ### CNN
-min loss: 0.0008
+simple text (1 song repeated many times): min loss: 0.0008
+tinyshakespeare: min loss: 1.6
 
 ### Attention: 
 TBD
