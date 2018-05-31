@@ -45,6 +45,7 @@ class CNN(nn.Module):
 
         self.encoder = nn.Embedding(input_size, hidden_size)
         self.c1 = nn.Conv2d(1, hidden_size, [pint, hidden_size])
+        self.relu = nn.ReLU(inplace=True)
         self.decoder = nn.Linear(hidden_size, output_size)
 
     def forward(self, input, position):
@@ -54,7 +55,7 @@ class CNN(nn.Module):
         inn = enc + position
         # print('enc+pos', inn, position)
         # print('inn', inn.shape) 
-        oc1 = self.c1(inn.view(1, 1, inn.size(0), inn.size(1)))
+        oc1 = self.relu( self.c1(inn.view(1, 1, inn.size(0), inn.size(1))) )
         output = self.decoder(oc1.view(1, -1))
         # print('out', output)
         return output

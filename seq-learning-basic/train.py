@@ -102,6 +102,7 @@ class CNN(nn.Module):
         self.doc1 = 8 # number of intermediate features
         self.c1 = nn.Conv1d(1, self.doc1, self.L)
         self.l1 = nn.Linear(self.doc1, 1)
+        self.relu = nn.ReLU(inplace=True)
         print('CNN model ops per sample:', self.L*self.doc1+self.doc1)
 
     def forward(self, input, future = 0):
@@ -111,7 +112,7 @@ class CNN(nn.Module):
 
         for i in range(0, input.size(1)-self.L):
             input_b = input[:,i:i+self.L].unsqueeze(1) # torch.Size([97, 1, 10])
-            o1 = self.c1(input_b)
+            o1 = self.relu( self.c1(input_b) )
             o1= o1.view(input.size(0), self.doc1)
             output = self.l1(o1)
             outputs += [output]
@@ -119,7 +120,7 @@ class CNN(nn.Module):
         for i in range(future):# if we should predict the future
             output_b = outputs[input.size(1)-self.L-1+i:input.size(1)-1+i]
             output_b = torch.stack(output_b, 1).squeeze().unsqueeze(1)
-            o1 = self.c1(output_b)
+            o1 = self.relu( self.c1(output_b) )
             o1 = o1.view(input.size(0), self.doc1)
             output = self.l1(o1)
             outputs += [output]
