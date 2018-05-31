@@ -61,3 +61,38 @@ class CNN(nn.Module):
         output = self.decoder(oc2.view(1, -1))
         # print('out', output)
         return output
+
+
+class Att(nn.Module):
+    def __init__(self, input_size, hidden_size, pint, output_size):
+        super(Att, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.pint = pint # how much older samples to integrate
+        self.output_size = output_size
+        print('SIZES: ', input_size, hidden_size, pint, output_size)
+
+        self.encoder = nn.Embedding(input_size, hidden_size)
+        self.c1 = nn.Conv2d(1, hidden_size, [pint, hidden_size])
+        self.c2 = nn.Conv2d(1, hidden_size, [pint, hidden_size])
+        self.relu = nn.ReLU(inplace=True)
+        self.a1 = Attention(hidden_size)
+        # self.l1 = nn.Linear(hidden_size, hidden_size)
+        self.decoder = nn.Linear(hidden_size, output_size)
+
+    def forward(self, input, position):
+        # print('in', input, position)
+        enc = self.encoder(input)
+        # print('enc', enc)
+        inn = enc + position
+        # print('enc+pos', inn, position)
+        # print('inn', inn.shape) 
+        oc1 = self.relu( self.c1(inn.view(1,1,inn.size(0),inn.size(1))) ) # this is the context = encoded sequence (self-attention)
+        # print(inn.unsqueeze(0).shape, oc1.squeeze().unsqueeze(0).unsqueeze(1).shape)
+        oa1, attn = self.a1(inn.unsqueeze(0), oc1.squeeze().unsqueeze(0).unsqueeze(1))
+        # print(oa1.shape, attn.shape)
+        oc2 = self.relu( self.c2( oa1.view(1,1,inn.size(0),inn.size(1)) ) )
+        # print(oc2.shape)
+        output = self.decoder(oc2.view(1, -1))
+        # print('out', output)
+        return output

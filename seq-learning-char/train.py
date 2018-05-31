@@ -99,10 +99,8 @@ elif args.sequencer == 'CNN':
     model = CNN(n_characters, args.hidden_size, args.pint, n_characters)
     model.apply(add_hooks)
 elif args.sequencer == 'Att':
-    print('Not implemented yet!')
-    os._exit()
-    # model = Att(n_characters, args.hidden_size, args.pint, n_characters)
-    # model.apply(add_hooks)
+    model = Att(n_characters, args.hidden_size, args.pint, n_characters)
+    model.apply(add_hooks)
 else:
     print('No model specified!')
     os._exit()
