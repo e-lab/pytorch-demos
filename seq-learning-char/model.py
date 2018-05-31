@@ -44,10 +44,10 @@ class CNN(nn.Module):
         print('SIZES: ', input_size, hidden_size, pint, output_size)
 
         self.encoder = nn.Embedding(input_size, hidden_size)
-        self.c1 = nn.Conv2d(1, hidden_size, [pint, hidden_size])
+        self.c1 = nn.Conv2d(1, 2*hidden_size, [pint, hidden_size])
         self.relu = nn.ReLU(inplace=True)
-        self.l1 = nn.Linear(hidden_size, hidden_size)
-        self.decoder = nn.Linear(hidden_size, output_size)
+        self.l1 = nn.Linear(2*hidden_size, 2*hidden_size)
+        self.decoder = nn.Linear(2*hidden_size, output_size)
 
     def forward(self, input, position):
         # print('in', input, position)

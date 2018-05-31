@@ -30,7 +30,7 @@ parser.add_argument('--hidden_size', type=int, default=64)
 parser.add_argument('--n_layers', type=int, default=1, help='GRU layers')
 parser.add_argument('--pint', type=int, default=16, help='CNN/Att past samples to integrate')
 parser.add_argument('--print_every', type=int, default=25)
-parser.add_argument('--learning_rate', type=float, default=0.01)
+parser.add_argument('--learning_rate', type=float, default=1e-3)
 parser.add_argument('--chunk_len', type=int, default=200)
 args = parser.parse_args()
 
