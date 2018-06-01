@@ -22,8 +22,8 @@ parser = argparse.ArgumentParser(description='Learning char sequences with LSTM,
 parser.add_argument('filename', type=str)
 parser.add_argument('--sequencer', type=str, default='GRU', 
                     help='sequencer model to use: GRU, CNN, Att')
-parser.add_argument('--epochs', type=int, default=1000, 
-                    help='number of epochs to run')
+parser.add_argument('--samples', type=int, default=1000, 
+                    help='number of samples to run')
 # parser.add_argument('--pprint', type=bool, default=True, 
                     # help='Print PDF or display image only')
 parser.add_argument('--hidden_size', type=int, default=64)
@@ -153,8 +153,8 @@ def save():
     print('Saved as %s' % save_filename)
 
 try:
-    print("Training for %d epochs..." % args.epochs)
-    for epoch in range(1, args.epochs + 1):
+    print("Training for %d samples..." % args.samples)
+    for epoch in range(1, args.samples + 1):
         loss = train(*random_training_set(args.chunk_len))
         loss_avg += loss
         if loss < min_loss: min_loss = loss
@@ -162,7 +162,7 @@ try:
         # generate some text to see performance:
         test_len = 100
         if epoch % args.print_every == 0:
-            print('[elapsed time: %s, epoch: %d,  percent complete: %d%%, loss: %.4f]' % (time_since(start), epoch, epoch / args.epochs * 100, loss))
+            print('[elapsed time: %s, epoch: %d,  percent complete: %d%%, loss: %.4f]' % (time_since(start), epoch, epoch / args.samples * 100, loss))
             if args.sequencer == 'GRU':
                 init_str = random_piece_text(args.pint+test_len)
                 generate_GRU(model, init_str[:args.pint], test_len)
