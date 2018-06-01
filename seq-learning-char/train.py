@@ -109,7 +109,7 @@ model_optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 criterion = nn.CrossEntropyLoss()
 
 start = time.time()
-all_losses = []
+min_loss = 1e12 # a huge number!
 loss_avg = 0
 
 
@@ -157,6 +157,7 @@ try:
     for epoch in range(1, args.epochs + 1):
         loss = train(*random_training_set(args.chunk_len))
         loss_avg += loss
+        if loss < min_loss: min_loss = loss
 
         # generate some text to see performance:
         test_len = 100
@@ -183,6 +184,8 @@ try:
     total_params = total_params
 
     print('Profiler results:')
+    print(args)
+    print('Minimum loss during training:', min_loss)
     print("#Ops: %f GOps"%(total_ops/1e9))
     print("#Parameters: %f M"%(total_params/1e6))
 
