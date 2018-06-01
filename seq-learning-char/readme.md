@@ -1,19 +1,25 @@
 # Learn a sequence
-# compare GRU, CNN and more
+# compare GRU, CNN and Attention models
 
 This demonstration learns a sequence of text data with GRU, CNN, Att models.
-It was deisgned to compare learning models
+It was designed to compare learning models
 
 
 ### GRU
-simple text (1 song repeated many times): min loss: 0.0888
-tinyshakespeare: min loss: 1.4
+test_easy: 				min loss: 	0.0888
+
+tailor_swift_lyrics: 	min loss:		1.4
 
 
 
 ### CNN
-simple text (1 song repeated many times): min loss: 0.0008
-tinyshakespeare: min loss: 1.6
+test_easy: 				min loss: 	0.0008
+
+tailor_swift_lyrics: 	min loss: 	1.6
+
+
 
 ### Attention: 
-TBD
+test_easy: 				min loss		0.0023
+
+tailor_swift_lyrics: 	min loss: 	1.52
