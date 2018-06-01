@@ -1,5 +1,4 @@
-# Learn a sequence
-# compare GRU, CNN and Attention models
+# Learn a sequence: compare GRU, CNN and Attention models
 
 This demonstration learns a sequence of text data with GRU, CNN, Att models.
 It was designed to compare learning models
