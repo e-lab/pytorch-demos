@@ -9,7 +9,9 @@
 *.pth
 seq-learning-basic/results/Att.txt
 *.pdf
-*.txt
 *.pt
 *.pt
 *.pt
+seq-learning-basic/results/cnn_results.txt
+seq-learning-basic/results/lstm.txt
+seq-learning-char/tinyshakespeare.txt
