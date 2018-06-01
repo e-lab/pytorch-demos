@@ -73,10 +73,10 @@ class Att(nn.Module):
         print('SIZES: ', input_size, hidden_size, pint, output_size)
 
         self.encoder = nn.Embedding(input_size, hidden_size)
-        self.c1 = nn.Conv2d(1, hidden_size, [pint, hidden_size])
-        self.c2 = nn.Conv2d(1, hidden_size, [pint, hidden_size])
+        self.c1 = nn.Conv2d(1, hidden_size, [pint, hidden_size]) # creates context for attention
+        self.c2 = nn.Conv2d(1, hidden_size, [pint, hidden_size]) # from attention output to classifier (same as c1 in CNN model)
         self.relu = nn.ReLU(inplace=True)
-        self.a1 = Attention(hidden_size)
+        self.a1 = Attention(hidden_size) # self-attention, as in the Transformer by Google
         # self.l1 = nn.Linear(hidden_size, hidden_size)
         self.decoder = nn.Linear(hidden_size, output_size)
 
