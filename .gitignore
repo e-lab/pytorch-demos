@@ -15,3 +15,4 @@ seq-learning-basic/results/Att.txt
 seq-learning-basic/results/cnn_results.txt
 seq-learning-basic/results/lstm.txt
 seq-learning-char/tinyshakespeare.txt
+.DS_Store
